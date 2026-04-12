@@ -1,5 +1,6 @@
 # Binaries and build artifacts
-bot
+/bot
+/api
 *.exe
 *.exe~
 *.dll
