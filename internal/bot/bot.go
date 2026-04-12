@@ -88,7 +88,7 @@ func (b *Bot) onPresenceUpdate(s *discordgo.Session, p *discordgo.PresenceUpdate
 	userObj := p.User
 	if cachedMember, err := s.State.Member(p.GuildID, p.User.ID); err == nil {
 		userObj = cachedMember.User
-	} else if cachedUser, err := s.State.User(p.User.ID); err == nil {
+	} else if cachedUser, err := s.User(p.User.ID); err == nil {
 		userObj = cachedUser
 	}
 
