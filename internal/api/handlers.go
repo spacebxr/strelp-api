@@ -14,10 +14,8 @@ func (s *Server) handleGetPresence(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	presence, err := s.Cache.GetPresence(r.Context(), userID)
+	presence, err := s.DB.GetPresence(r.Context(), userID)
 	if err != nil {
-		// If key not found, redis results in an error we can interpret
-		// For simplicity, we assume any error means not found if we don't handle it specifically
 		http.Error(w, "Presence not found", http.StatusNotFound)
 		return
 	}

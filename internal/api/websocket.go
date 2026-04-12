@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"log"
 	"net/http"
 
@@ -13,7 +12,7 @@ var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 	CheckOrigin: func(r *http.Request) bool {
-		return true // Allow all origins for the presence API
+		return true 
 	},
 }
 
@@ -31,38 +30,51 @@ func (s *Server) handleStreamPresence(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 
-	log.Printf("Client connected for streaming presence: %s", userID)
+	log.Printf("[API] Client connected for streaming: %s", userID)
 
-	// Fetch initial state
-	presence, err := s.Cache.GetPresence(r.Context(), userID)
+	// Send initial state
+	presence, err := s.DB.GetPresence(r.Context(), userID)
 	if err == nil {
 		if err := conn.WriteJSON(presence); err != nil {
-			log.Printf("Error sending initial state: %v", err)
+			log.Printf("[API] Error sending initial state: %v", err)
 			return
 		}
 	}
 
-	// Subscribe to updates
-	ctx, cancel := context.WithCancel(r.Context())
-	defer cancel()
+	// Listen for notifications
+	// Acquire a dedicated connection for LISTEN
+	dbConn, err := s.DB.AcquireConn(r.Context())
+	if err != nil {
+		log.Printf("[API] Error acquiring conn for LISTEN: %v", err)
+		return
+	}
+	defer dbConn.Release()
 
-	pubsub := s.Cache.Subscribe(ctx, userID)
-	defer pubsub.Close()
-
-	ch := pubsub.Channel()
+	// Execute LISTEN
+	_, err = dbConn.Exec(r.Context(), "LISTEN presence_updates")
+	if err != nil {
+		log.Printf("[API] Error executing LISTEN: %v", err)
+		return
+	}
 
 	for {
-		select {
-		case msg := <-ch:
-			// Payload from Redis is already JSON string of models.Presence
-			// We send it as raw message since it's already serialized
-			if err := conn.WriteMessage(websocket.TextMessage, []byte(msg.Payload)); err != nil {
-				log.Printf("Error streaming update to client: %v", err)
-				return
-			}
-		case <-r.Context().Done():
-			log.Printf("Client disconnected (context done): %s", userID)
+		// Wait for notification
+		notification, err := dbConn.Conn().WaitForNotification(r.Context())
+		if err != nil {
+			log.Printf("[API] Notification error: %v", err)
 			return
+		}
+
+		// Check if the notification is for the specific user we are watching
+		// notification.Payload contains the user_id (sent by pg_notify trigger)
+		if notification.Payload == userID {
+			presence, err := s.DB.GetPresence(r.Context(), userID)
+			if err == nil {
+				if err := conn.WriteJSON(presence); err != nil {
+					log.Printf("[API] Error streaming update: %v", err)
+					return
+				}
+			}
 		}
 	}
 }

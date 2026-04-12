@@ -8,17 +8,17 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
-	"github.com/spacebxr/strelp/internal/cache"
+	"github.com/spacebxr/strelp/internal/database"
 )
 
 type Server struct {
-	Cache  *cache.Cache
+	DB     *database.Database
 	Router *chi.Mux
 }
 
-func NewServer(cache *cache.Cache) *Server {
+func NewServer(db *database.Database) *Server {
 	s := &Server{
-		Cache:  cache,
+		DB:     db,
 		Router: chi.NewRouter(),
 	}
 
@@ -59,7 +59,7 @@ func (s *Server) setupRoutes() {
 
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	w.Write([]byte(`{"name": "Strelp Presence API", "version": "1.0.0"}`))
+	w.Write([]byte(`{"name": "Strelp Presence API", "version": "1.0.0", "engine": "PostgreSQL"}`))
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {

@@ -11,49 +11,49 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/spacebxr/strelp/internal/api"
-	"github.com/spacebxr/strelp/internal/cache"
+	"github.com/spacebxr/strelp/internal/database"
 )
 
 func main() {
 	if err := godotenv.Load(); err != nil {
-		log.Println("No .env file found, reading from environment variables")
+		log.Println("No .env file found")
 	}
 
-	port := os.Getenv("API_PORT")
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = os.Getenv("API_PORT")
+	}
 	if port == "" {
 		port = "8080"
 	}
 
-	redisAddr := os.Getenv("REDIS_ADDR")
-	if redisAddr == "" {
-		redisAddr = "localhost:6379"
+	dbURL := os.Getenv("DATABASE_URL")
+	if dbURL == "" {
+		log.Fatal("DATABASE_URL is required (e.g., postgres://user:pass@localhost:5432/dbname)")
 	}
 
-	redisPassword := os.Getenv("REDIS_PASSWORD")
-
-	c, err := cache.NewCache(redisAddr, redisPassword, 0)
+	db, err := database.NewDatabase(dbURL)
 	if err != nil {
-		log.Fatalf("Failed to connect to Redis: %v", err)
+		log.Fatalf("Failed to connect to database: %v", err)
 	}
-	log.Println("Redis connected successfully")
+	defer db.Close()
+	log.Println("PostgreSQL connected successfully")
 
-	server := api.NewServer(c)
+	server := api.NewServer(db)
 
 	srv := &http.Server{
 		Addr:    ":" + port,
 		Handler: server.Router,
 	}
 
-	// Start server in a goroutine
 	go func() {
 		if err := server.Start(":" + port); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Listen: %s\n", err)
 		}
 	}()
 
-	log.Printf("API Server is running on port %s", port)
+	log.Printf("API Server (Postgres) is running on port %s", port)
 
-	// Graceful shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
 	<-quit
