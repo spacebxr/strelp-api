@@ -84,12 +84,20 @@ func (b *Bot) onPresenceUpdate(s *discordgo.Session, p *discordgo.PresenceUpdate
 		}
 	}
 
+	// Retrieve full User object since PresenceUpdate often omits fields
+	userObj := p.User
+	if cachedMember, err := s.State.Member(p.GuildID, p.User.ID); err == nil {
+		userObj = cachedMember.User
+	} else if cachedUser, err := s.State.User(p.User.ID); err == nil {
+		userObj = cachedUser
+	}
+
 	presence := &models.Presence{
 		User: models.User{
-			ID:         p.User.ID,
-			Username:   p.User.Username,
-			GlobalName: p.User.GlobalName,
-			Avatar:     p.User.Avatar,
+			ID:         userObj.ID,
+			Username:   userObj.Username,
+			GlobalName: userObj.GlobalName,
+			Avatar:     userObj.AvatarURL("1024"),
 		},
 		DiscordStatus: string(p.Status),
 		Activities:    activities,
