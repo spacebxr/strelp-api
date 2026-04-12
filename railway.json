@@ -6,6 +6,6 @@
   "deploy": {
     "numReplicas": 1,
     "restartPolicyType": "ON_FAILURE",
-    "startCommand": "./api"
+    "startCommand": "sh -c './bot & ./api'"
   }
 }
