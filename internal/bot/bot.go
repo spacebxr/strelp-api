@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/spacebxr/strelp/internal/database"
@@ -125,6 +126,10 @@ func (b *Bot) RegisterCommands(guildID string) error {
 			Name:        "stop",
 			Description: "Stop tracking your presence and delete your Strelp data",
 		},
+		{
+			Name:        "ws",
+			Description: "Learn how to use WebSockets for real-time data",
+		},
 	}
 
 	for _, cmd := range commands {
@@ -174,11 +179,32 @@ func (b *Bot) onInteractionCreate(s *discordgo.Session, i *discordgo.Interaction
 			return
 		}
 
+		apiDomain := os.Getenv("RAILWAY_PUBLIC_DOMAIN")
+		if apiDomain == "" {
+			apiDomain = "strelp-api-production.up.railway.app" 
+		}
+
+		embed := &discordgo.MessageEmbed{
+			Title:       "Tracking Started Successfully",
+			Description: "Your presence is now being actively tracked and is ready to be fetched.",
+			Color:       0x00FF00,
+			Fields: []*discordgo.MessageEmbedField{
+				{
+					Name:  "Your API Endpoint",
+					Value: fmt.Sprintf("Make a standard HTTP GET request to:\n`https://%s/v1/presence/%s`", apiDomain, user.ID),
+				},
+				{
+					Name:  "How to use it",
+					Value: "Any website or application can fetch this endpoint to receive a direct JSON feed of your current Discord status and custom activities like Spotify.",
+				},
+			},
+		}
+
 		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
 			Data: &discordgo.InteractionResponseData{
-				Content: "🚀 **Strelp tracking started!** Your presence is now being tracked and your API is live (Powered by PostgreSQL).",
-				Flags:   discordgo.MessageFlagsEphemeral,
+				Embeds: []*discordgo.MessageEmbed{embed},
+				Flags:  discordgo.MessageFlagsEphemeral,
 			},
 		})
 
@@ -187,8 +213,38 @@ func (b *Bot) onInteractionCreate(s *discordgo.Session, i *discordgo.Interaction
 		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
 			Data: &discordgo.InteractionResponseData{
-				Content: "🛑 **Strelp tracking stopped.** Your data has been deleted from the database.",
+				Content: "Tracking successfully stopped. All of your data has been temporarily cleared from the database.",
 				Flags:   discordgo.MessageFlagsEphemeral,
+			},
+		})
+
+	case "ws":
+		apiDomain := os.Getenv("RAILWAY_PUBLIC_DOMAIN")
+		if apiDomain == "" {
+			apiDomain = "strelp-api-production.up.railway.app"
+		}
+
+		embed := &discordgo.MessageEmbed{
+			Title:       "Using WebSockets for Real-Time Presence",
+			Description: "WebSockets allow your website to receive instant presence updates the millisecond they happen, without needing to constantly fetch the API.",
+			Color:       0x00B0F4,
+			Fields: []*discordgo.MessageEmbedField{
+				{
+					Name:  "Connection URL",
+					Value: fmt.Sprintf("`wss://%s/v1/presence/%s/ws`", apiDomain, user.ID),
+				},
+				{
+					Name:  "Quick Javascript Example",
+					Value: fmt.Sprintf("```javascript\nconst socket = new WebSocket('wss://%s/v1/presence/%s/ws');\n\nsocket.onmessage = function(event) {\n  const data = JSON.parse(event.data);\n  console.log('Status updated:', data.discord_status);\n};\n```", apiDomain, user.ID),
+				},
+			},
+		}
+
+		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Embeds: []*discordgo.MessageEmbed{embed},
+				Flags:  discordgo.MessageFlagsEphemeral,
 			},
 		})
 	}
