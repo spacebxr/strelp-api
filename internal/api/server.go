@@ -9,7 +9,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 	"github.com/go-chi/httprate"
-	"github.com/spacebxr/strelp/internal/database"
+	"github.com/spacebxr/strelp-api/internal/database"
 )
 
 type Server struct {
