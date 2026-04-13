@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
-	"github.com/spacebxr/strelp/internal/api"
-	"github.com/spacebxr/strelp/internal/database"
+	"github.com/spacebxr/strelp-api/internal/api"
+	"github.com/spacebxr/strelp-api/internal/database"
 )
 
 func main() {

@@ -1,4 +1,4 @@
-module github.com/spacebxr/strelp
+module github.com/spacebxr/strelp-api
 
 go 1.26.2
 

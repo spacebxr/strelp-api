@@ -7,8 +7,8 @@ import (
 	"os"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/spacebxr/strelp/internal/database"
-	"github.com/spacebxr/strelp/internal/models"
+	"github.com/spacebxr/strelp-api/internal/database"
+	"github.com/spacebxr/strelp-api/internal/models"
 )
 
 type Bot struct {

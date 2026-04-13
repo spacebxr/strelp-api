@@ -7,8 +7,8 @@ import (
 	"syscall"
 
 	"github.com/joho/godotenv"
-	"github.com/spacebxr/strelp/internal/bot"
-	"github.com/spacebxr/strelp/internal/database"
+	"github.com/spacebxr/strelp-api/internal/bot"
+	"github.com/spacebxr/strelp-api/internal/database"
 )
 
 func main() {
