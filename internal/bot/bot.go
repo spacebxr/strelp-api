@@ -47,19 +47,19 @@ func (b *Bot) Start() error {
 func (b *Bot) onPresenceUpdate(s *discordgo.Session, p *discordgo.PresenceUpdate) {
 	ctx := context.Background()
 
-	// Check if user is opted-in
+	// Check if user is opted-in - spacebxr
 	_, err := b.DB.GetPresence(ctx, p.User.ID)
 	if err != nil {
 		return
 	}
 
 	log.Printf("[Bot] Updating presence for user: %s", p.User.Username)
-	
+
 	activities := make([]models.Activity, len(p.Activities))
 	var spotify *models.Spotify
-	
+
 	for i, a := range p.Activities {
-		startTime := a.Timestamps.StartTimestamp / 1000 
+		startTime := a.Timestamps.StartTimestamp / 1000
 
 		activities[i] = models.Activity{
 			Name:      a.Name,
@@ -68,7 +68,7 @@ func (b *Bot) onPresenceUpdate(s *discordgo.Session, p *discordgo.PresenceUpdate
 			Details:   a.Details,
 			CreatedAt: startTime,
 		}
-		
+
 		if a.Name == "Spotify" {
 			startTime := a.Timestamps.StartTimestamp / 1000
 			endTime := a.Timestamps.EndTimestamp / 1000
@@ -89,7 +89,7 @@ func (b *Bot) onPresenceUpdate(s *discordgo.Session, p *discordgo.PresenceUpdate
 		}
 	}
 
-	// Retrieve full User object since PresenceUpdate often omits fields
+	// Retrieve full User object since PresenceUpdate often omits fields - spacebxr
 	userObj := p.User
 	if cachedMember, err := s.State.Member(p.GuildID, p.User.ID); err == nil {
 		userObj = cachedMember.User
@@ -195,7 +195,7 @@ func (b *Bot) onInteractionCreate(s *discordgo.Session, i *discordgo.Interaction
 			DiscordStatus: "online",
 			Activities:    []models.Activity{},
 		}
-		
+
 		if err := b.DB.SetPresence(ctx, user.ID, presence); err != nil {
 			log.Printf("[Bot] Error enabling tracking for %s: %v", user.ID, err)
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
@@ -210,7 +210,7 @@ func (b *Bot) onInteractionCreate(s *discordgo.Session, i *discordgo.Interaction
 
 		apiDomain := os.Getenv("RAILWAY_PUBLIC_DOMAIN")
 		if apiDomain == "" {
-			apiDomain = "strelp-api-production.up.railway.app" 
+			apiDomain = "strelp-api-production.up.railway.app"
 		}
 
 		embed := &discordgo.MessageEmbed{
@@ -360,7 +360,7 @@ func (b *Bot) onInteractionCreate(s *discordgo.Session, i *discordgo.Interaction
 							},
 							{
 								Name:  "Required Token Permissions",
-								Value: "Your PAT needs the following scopes:\n`repo` — read access to your repositories (required for private repos)\n`read:user` — read your public profile info\n`user:email` — read your email (optional)\n\nFor public repos only, `public_repo` is sufficient instead of `repo`.",
+								Value: "**Classic PATs**:\n`repo` — read access (required for private repos)\n`read:user` — read public profile info\n*(For public repos only, `public_repo` is sufficient)*\n\n**Fine-Grained PATs**:\nRequire **Read-only** access to **Contents** and **Metadata** for the selected repositories.",
 							},
 							{
 								Name:  "Security",
@@ -385,7 +385,7 @@ func (b *Bot) onInteractionCreate(s *discordgo.Session, i *discordgo.Interaction
 		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
 			Data: &discordgo.InteractionResponseData{
-				Content: "GitHub disconnected. Your commit data has been removed from your presence.",
+				Content: "GitHub disconnected. Your commit data has been removed from your presence and your data has been cleared from our database, any loss of data now will not be our responsibility.",
 				Flags:   discordgo.MessageFlagsEphemeral,
 			},
 		})

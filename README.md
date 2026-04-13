@@ -42,4 +42,4 @@ Add the following variables in the Railway Dashboard:
    ./api
    ```
 built with <3 by spacebxr and other contributors.
-A star would be much appreciated.
+A github star would be much appreciated.
