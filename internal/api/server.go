@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
+	"github.com/go-chi/httprate"
 	"github.com/spacebxr/strelp/internal/database"
 )
 
@@ -34,6 +35,7 @@ func (s *Server) setupMiddleware() {
 	s.Router.Use(middleware.Logger)
 	s.Router.Use(middleware.Recoverer)
 	s.Router.Use(middleware.Timeout(60 * time.Second))
+	s.Router.Use(httprate.LimitByIP(35, 1*time.Minute))
 
 	s.Router.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"*"},

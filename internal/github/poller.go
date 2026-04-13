@@ -9,12 +9,12 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/spacebxr/strelp/internal/cache"
+	"github.com/spacebxr/strelp/internal/database"
 	"github.com/spacebxr/strelp/internal/models"
 )
 
 type Poller struct {
-	Cache *cache.Cache
+	DB *database.Database
 }
 
 type GHEvent struct {
@@ -67,7 +67,7 @@ func (p *Poller) PollUser(ctx context.Context, userID string, ghUsername string)
 
 	if len(events) > 0 {
 		event := events[0]
-		presence, err := p.Cache.GetPresence(ctx, userID)
+		presence, err := p.DB.GetPresence(ctx, userID)
 		if err != nil {
 			return
 		}
@@ -84,6 +84,6 @@ func (p *Poller) PollUser(ctx context.Context, userID string, ghUsername string)
 		}
 
 		presence.GitHub = ghData
-		p.Cache.SetPresence(ctx, userID, presence)
+		p.DB.SetPresence(ctx, userID, presence)
 	}
 }
