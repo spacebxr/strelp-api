@@ -7,24 +7,28 @@ import (
 	"os"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/spacebxr/strelp-api/internal/crypto"
 	"github.com/spacebxr/strelp-api/internal/database"
+	"github.com/spacebxr/strelp-api/internal/github"
 	"github.com/spacebxr/strelp-api/internal/models"
 )
 
 type Bot struct {
-	Session *discordgo.Session
-	DB      *database.Database
+	Session       *discordgo.Session
+	DB            *database.Database
+	EncryptionKey string
 }
 
-func NewBot(token string, db *database.Database) (*Bot, error) {
+func NewBot(token string, db *database.Database, encryptionKey string) (*Bot, error) {
 	dg, err := discordgo.New("Bot " + token)
 	if err != nil {
 		return nil, err
 	}
 
 	b := &Bot{
-		Session: dg,
-		DB:      db,
+		Session:       dg,
+		DB:            db,
+		EncryptionKey: encryptionKey,
 	}
 
 	dg.Identify.Intents = discordgo.IntentGuildPresences | discordgo.IntentGuildMembers | discordgo.IntentGuilds
@@ -129,6 +133,33 @@ func (b *Bot) RegisterCommands(guildID string) error {
 		{
 			Name:        "ws",
 			Description: "Learn how to use WebSockets for real-time data",
+		},
+		{
+			Name:        "git",
+			Description: "Connect your GitHub account to show your latest commits in your presence",
+			Options: []*discordgo.ApplicationCommandOption{
+				{
+					Type:        discordgo.ApplicationCommandOptionString,
+					Name:        "token",
+					Description: "Your GitHub Personal Access Token (keep this private)",
+					Required:    true,
+				},
+				{
+					Type:        discordgo.ApplicationCommandOptionString,
+					Name:        "visibility",
+					Description: "Which repos to show in your presence",
+					Required:    true,
+					Choices: []*discordgo.ApplicationCommandOptionChoice{
+						{Name: "Public repos only", Value: "public"},
+						{Name: "Private repos only", Value: "private"},
+						{Name: "Both public and private", Value: "both"},
+					},
+				},
+			},
+		},
+		{
+			Name:        "gitstop",
+			Description: "Disconnect your GitHub account and stop showing commit data",
 		},
 	}
 
@@ -251,6 +282,107 @@ func (b *Bot) onInteractionCreate(s *discordgo.Session, i *discordgo.Interaction
 			Data: &discordgo.InteractionResponseData{
 				Embeds: []*discordgo.MessageEmbed{embed},
 				Flags:  discordgo.MessageFlagsEphemeral,
+			},
+		})
+
+	case "git":
+		opts := data.Options
+		var rawToken, visibility string
+		for _, o := range opts {
+			switch o.Name {
+			case "token":
+				rawToken = o.StringValue()
+			case "visibility":
+				visibility = o.StringValue()
+			}
+		}
+
+		ghUsername, err := github.ValidateToken(rawToken)
+		if err != nil {
+			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Data: &discordgo.InteractionResponseData{
+					Content: fmt.Sprintf("Could not validate your GitHub token: %v. Make sure you are using a valid Personal Access Token.", err),
+					Flags:   discordgo.MessageFlagsEphemeral,
+				},
+			})
+			return
+		}
+
+		encryptedToken, err := crypto.Encrypt(rawToken, b.EncryptionKey)
+		if err != nil {
+			log.Printf("[Bot] Failed to encrypt GitHub token for %s: %v", user.ID, err)
+			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Data: &discordgo.InteractionResponseData{
+					Content: "An internal error occurred. Please try again later.",
+					Flags:   discordgo.MessageFlagsEphemeral,
+				},
+			})
+			return
+		}
+
+		showPrivate := visibility == "private" || visibility == "both"
+		showPublic := visibility == "public" || visibility == "both"
+
+		settings := &database.GitHubSettings{
+			UserID:      user.ID,
+			AccessToken: encryptedToken,
+			Username:    ghUsername,
+			ShowPrivate: showPrivate,
+			ShowPublic:  showPublic,
+		}
+
+		if err := b.DB.SaveGitHubSettings(ctx, settings); err != nil {
+			log.Printf("[Bot] Failed to save GitHub settings for %s: %v", user.ID, err)
+			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Data: &discordgo.InteractionResponseData{
+					Content: "Failed to save your GitHub settings. Please try again. ",
+					Flags:   discordgo.MessageFlagsEphemeral,
+				},
+			})
+			return
+		}
+
+		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Embeds: []*discordgo.MessageEmbed{
+					{
+						Title:       "GitHub Connected",
+						Description: fmt.Sprintf("Your GitHub account **%s** has been linked. Your latest commits will appear in your presence within 5 minutes.", ghUsername),
+						Color:       0x24292e,
+						Fields: []*discordgo.MessageEmbedField{
+							{
+								Name:  "Visibility",
+								Value: fmt.Sprintf("Showing: %s repos", visibility),
+							},
+							{
+								Name:  "Security",
+								Value: "Your token has been encrypted with AES-256-GCM before being stored. It is never logged or exposed in any API response.",
+							},
+						},
+					},
+				},
+				Flags: discordgo.MessageFlagsEphemeral,
+			},
+		})
+
+	case "gitstop":
+		b.DB.DeleteGitHubSettings(ctx, user.ID)
+
+		presence, err := b.DB.GetPresence(ctx, user.ID)
+		if err == nil {
+			presence.GitHub = nil
+			b.DB.SetPresence(ctx, user.ID, presence)
+		}
+
+		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: "GitHub disconnected. Your commit data has been removed from your presence.",
+				Flags:   discordgo.MessageFlagsEphemeral,
 			},
 		})
 	}

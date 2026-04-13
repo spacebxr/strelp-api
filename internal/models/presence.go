@@ -22,6 +22,7 @@ type GitHub struct {
 	LastCommit string `json:"last_commit"`
 	Repo       string `json:"repo"`
 	URL        string `json:"url"`
+	Private    bool   `json:"private"`
 	UpdatedAt  int64  `json:"updated_at"`
 }
 

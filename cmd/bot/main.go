@@ -26,6 +26,11 @@ func main() {
 		log.Fatal("DATABASE_URL is required (e.g., postgres://user:pass@localhost:5432/dbname)")
 	}
 
+	encryptionKey := os.Getenv("ENCRYPTION_KEY")
+	if len(encryptionKey) < 16 {
+		log.Fatal("ENCRYPTION_KEY is required and must be at least 16 characters")
+	}
+
 	// Initialize Database
 	db, err := database.NewDatabase(dbURL)
 	if err != nil {
@@ -35,7 +40,7 @@ func main() {
 	log.Println("PostgreSQL connected successfully")
 
 	// Initialize Bot
-	b, err := bot.NewBot(token, db)
+	b, err := bot.NewBot(token, db, encryptionKey)
 	if err != nil {
 		log.Fatalf("Failed to initialize bot: %v", err)
 	}

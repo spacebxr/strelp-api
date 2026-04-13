@@ -83,3 +83,62 @@ func (db *Database) AcquireConn(ctx context.Context) (*pgxpool.Conn, error) {
 func (db *Database) Close() {
 	db.pool.Close()
 }
+
+type GitHubSettings struct {
+	UserID      string
+	AccessToken string
+	Username    string
+	ShowPrivate bool
+	ShowPublic  bool
+}
+
+func (db *Database) SaveGitHubSettings(ctx context.Context, s *GitHubSettings) error {
+	query := `
+		INSERT INTO github_settings (user_id, access_token, username, show_private, show_public)
+		VALUES ($1, $2, $3, $4, $5)
+		ON CONFLICT (user_id) DO UPDATE
+		SET access_token = EXCLUDED.access_token,
+		    username = EXCLUDED.username,
+		    show_private = EXCLUDED.show_private,
+		    show_public = EXCLUDED.show_public;
+	`
+	_, err := db.pool.Exec(ctx, query, s.UserID, s.AccessToken, s.Username, s.ShowPrivate, s.ShowPublic)
+	return err
+}
+
+func (db *Database) GetGitHubSettings(ctx context.Context, userID string) (*GitHubSettings, error) {
+	query := `SELECT user_id, access_token, username, show_private, show_public FROM github_settings WHERE user_id = $1`
+	s := &GitHubSettings{}
+	err := db.pool.QueryRow(ctx, query, userID).Scan(&s.UserID, &s.AccessToken, &s.Username, &s.ShowPrivate, &s.ShowPublic)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, fmt.Errorf("github settings not found")
+		}
+		return nil, err
+	}
+	return s, nil
+}
+
+func (db *Database) DeleteGitHubSettings(ctx context.Context, userID string) error {
+	_, err := db.pool.Exec(ctx, "DELETE FROM github_settings WHERE user_id = $1", userID)
+	return err
+}
+
+func (db *Database) GetAllGitHubUsers(ctx context.Context) ([]*GitHubSettings, error) {
+	query := `SELECT user_id, access_token, username, show_private, show_public FROM github_settings`
+	rows, err := db.pool.Query(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var results []*GitHubSettings
+	for rows.Next() {
+		s := &GitHubSettings{}
+		if err := rows.Scan(&s.UserID, &s.AccessToken, &s.Username, &s.ShowPrivate, &s.ShowPublic); err != nil {
+			continue
+		}
+		results = append(results, s)
+	}
+	return results, nil
+}

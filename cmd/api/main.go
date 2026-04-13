@@ -12,6 +12,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/spacebxr/strelp-api/internal/api"
 	"github.com/spacebxr/strelp-api/internal/database"
+	"github.com/spacebxr/strelp-api/internal/github"
 )
 
 func main() {
@@ -32,12 +33,23 @@ func main() {
 		log.Fatal("DATABASE_URL is required (e.g., postgres://user:pass@localhost:5432/dbname)")
 	}
 
+	encryptionKey := os.Getenv("ENCRYPTION_KEY")
+	if len(encryptionKey) < 16 {
+		log.Fatal("ENCRYPTION_KEY is required and must be at least 16 characters")
+	}
+
 	db, err := database.NewDatabase(dbURL)
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
 	defer db.Close()
 	log.Println("PostgreSQL connected successfully")
+
+	pollerCtx, pollerCancel := context.WithCancel(context.Background())
+	defer pollerCancel()
+	p := &github.Poller{DB: db, EncryptionKey: encryptionKey}
+	go p.Start(pollerCtx)
+	log.Println("GitHub poller started (5-minute interval)")
 
 	server := api.NewServer(db)
 
