@@ -25,3 +25,24 @@ func (s *Server) handleGetPresence(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 	}
 }
+
+func (s *Server) handlePollerStatus(w http.ResponseWriter, r *http.Request) {
+	active, err := s.DB.CountGitHubUsers(r.Context())
+	if err != nil {
+		http.Error(w, "Failed to get poller status", http.StatusInternalServerError)
+		return
+	}
+
+	total, err := s.DB.CountAllGitHubUsers(r.Context())
+	if err != nil {
+		http.Error(w, "Failed to get poller status", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status":                "ok",
+		"currently_polling":     active,
+		"total_accounts_polled": total,
+	})
+}

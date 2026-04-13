@@ -18,7 +18,7 @@ The poller needs a token to read your GitHub activity on your behalf. Here is ho
    - `read:user` — needed to verify your username when linking the token.
    - If you only care about public repos, `public_repo` is enough instead of `repo`.
 5. Scroll to the bottom and click **Generate token**.
-6. Copy the token immediately. GitHub will not show it again.
+6. Copy the token immediately. GitHub will NOT show it again.
 
 ### Fine-Grained PAT (More secure, slightly more setup)
 

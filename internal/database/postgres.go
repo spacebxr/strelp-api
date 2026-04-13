@@ -94,13 +94,14 @@ type GitHubSettings struct {
 
 func (db *Database) SaveGitHubSettings(ctx context.Context, s *GitHubSettings) error {
 	query := `
-		INSERT INTO github_settings (user_id, access_token, username, show_private, show_public)
-		VALUES ($1, $2, $3, $4, $5)
+		INSERT INTO github_settings (user_id, access_token, username, show_private, show_public, deleted)
+		VALUES ($1, $2, $3, $4, $5, false)
 		ON CONFLICT (user_id) DO UPDATE
 		SET access_token = EXCLUDED.access_token,
 		    username = EXCLUDED.username,
 		    show_private = EXCLUDED.show_private,
-		    show_public = EXCLUDED.show_public;
+		    show_public = EXCLUDED.show_public,
+		    deleted = false;
 	`
 	_, err := db.pool.Exec(ctx, query, s.UserID, s.AccessToken, s.Username, s.ShowPrivate, s.ShowPublic)
 	return err
@@ -120,12 +121,12 @@ func (db *Database) GetGitHubSettings(ctx context.Context, userID string) (*GitH
 }
 
 func (db *Database) DeleteGitHubSettings(ctx context.Context, userID string) error {
-	_, err := db.pool.Exec(ctx, "DELETE FROM github_settings WHERE user_id = $1", userID)
+	_, err := db.pool.Exec(ctx, "UPDATE github_settings SET deleted = true WHERE user_id = $1", userID)
 	return err
 }
 
 func (db *Database) GetAllGitHubUsers(ctx context.Context) ([]*GitHubSettings, error) {
-	query := `SELECT user_id, access_token, username, show_private, show_public FROM github_settings`
+	query := `SELECT user_id, access_token, username, show_private, show_public FROM github_settings WHERE deleted = false`
 	rows, err := db.pool.Query(ctx, query)
 	if err != nil {
 		return nil, err
@@ -141,4 +142,16 @@ func (db *Database) GetAllGitHubUsers(ctx context.Context) ([]*GitHubSettings, e
 		results = append(results, s)
 	}
 	return results, nil
+}
+
+func (db *Database) CountGitHubUsers(ctx context.Context) (int, error) {
+	var count int
+	err := db.pool.QueryRow(ctx, "SELECT COUNT(*) FROM github_settings WHERE deleted = false").Scan(&count)
+	return count, err
+}
+
+func (db *Database) CountAllGitHubUsers(ctx context.Context) (int, error) {
+	var count int
+	err := db.pool.QueryRow(ctx, "SELECT COUNT(*) FROM github_settings").Scan(&count)
+	return count, err
 }

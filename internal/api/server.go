@@ -52,6 +52,8 @@ func (s *Server) setupRoutes() {
 	s.Router.Get("/health", s.handleHealth)
 
 	s.Router.Route("/v1", func(r chi.Router) {
+		r.Get("/poller-status", s.handlePollerStatus)
+		
 		r.Route("/presence", func(r chi.Router) {
 			r.Get("/{userID}", s.handleGetPresence)
 			r.Get("/{userID}/ws", s.handleStreamPresence)
