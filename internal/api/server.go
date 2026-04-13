@@ -61,7 +61,7 @@ func (s *Server) setupRoutes() {
 
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	w.Write([]byte(`{"name": "Strelp Presence API", "version": "1.0.0", "engine": "PostgreSQL"}`))
+	w.Write([]byte(`{"name": "Strelp Presence API", "version": "1.0.0", "engine": "PostgreSQL", "github": "https://github.com/spacebxr/strelp-api", "Made By": "spacebxr, cardinal, sachfaxou, and other contributors. ", "Join the discord server for support and to start the presence. https://discord.gg/92zur6zRmR"}`))
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
