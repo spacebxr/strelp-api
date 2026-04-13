@@ -132,13 +132,11 @@ func (b *Bot) RegisterCommands(guildID string) error {
 		},
 	}
 
-	for _, cmd := range commands {
-		_, err := b.Session.ApplicationCommandCreate(b.Session.State.User.ID, guildID, cmd)
-		if err != nil {
-			return err
-		}
+	_, err := b.Session.ApplicationCommandBulkOverwrite(b.Session.State.User.ID, guildID, commands)
+	if err == nil && guildID != "" {
+		b.Session.ApplicationCommandBulkOverwrite(b.Session.State.User.ID, "", nil)
 	}
-	return nil
+	return err
 }
 
 func (b *Bot) onInteractionCreate(s *discordgo.Session, i *discordgo.InteractionCreate) {
@@ -185,7 +183,7 @@ func (b *Bot) onInteractionCreate(s *discordgo.Session, i *discordgo.Interaction
 		}
 
 		embed := &discordgo.MessageEmbed{
-			Title:       "Tracking Started Successfully",
+			Title:       "Strelp Tracking Started Successfully",
 			Description: "Your presence is now being actively tracked and is ready to be fetched.",
 			Color:       0x00FF00,
 			Fields: []*discordgo.MessageEmbedField{
@@ -194,8 +192,12 @@ func (b *Bot) onInteractionCreate(s *discordgo.Session, i *discordgo.Interaction
 					Value: fmt.Sprintf("Make a standard HTTP GET request to:\n`https://%s/v1/presence/%s`", apiDomain, user.ID),
 				},
 				{
-					Name:  "How to use it",
-					Value: "Any website or application can fetch this endpoint to receive a direct JSON feed of your current Discord status and custom activities like Spotify.",
+					Name:  "How to use it with Code",
+					Value: fmt.Sprintf("```javascript\nfetch('https://%s/v1/presence/%s')\n  .then(res => res.json())\n  .then(data => console.log('Current status:', data.discord_status));\n```", apiDomain, user.ID),
+				},
+				{
+					Name:  "Common Errors and Fixes",
+					Value: "**Error: 404 Not Found**\nFix: Ensure you have run the /start command. Data is only stored while the bot is tracking you.\n\n**Error: CORS Blocked**\nFix: The API allows cross-origin requests by default. If you encounter CORS issues, verify that you are not sending custom restricted headers without setting them up properly.",
 				},
 			},
 		}
@@ -213,7 +215,7 @@ func (b *Bot) onInteractionCreate(s *discordgo.Session, i *discordgo.Interaction
 		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
 			Data: &discordgo.InteractionResponseData{
-				Content: "Tracking successfully stopped. All of your data has been temporarily cleared from the database.",
+				Content: "Strelp tracking stopped. Your data has been removed from the database.",
 				Flags:   discordgo.MessageFlagsEphemeral,
 			},
 		})
@@ -226,7 +228,7 @@ func (b *Bot) onInteractionCreate(s *discordgo.Session, i *discordgo.Interaction
 
 		embed := &discordgo.MessageEmbed{
 			Title:       "Using WebSockets for Real-Time Presence",
-			Description: "WebSockets allow your website to receive instant presence updates the millisecond they happen, without needing to constantly fetch the API.",
+			Description: "WebSockets allow your website to receive instant presence updates seamlessly without constant API fetching.",
 			Color:       0x00B0F4,
 			Fields: []*discordgo.MessageEmbedField{
 				{
@@ -235,7 +237,11 @@ func (b *Bot) onInteractionCreate(s *discordgo.Session, i *discordgo.Interaction
 				},
 				{
 					Name:  "Quick Javascript Example",
-					Value: fmt.Sprintf("```javascript\nconst socket = new WebSocket('wss://%s/v1/presence/%s/ws');\n\nsocket.onmessage = function(event) {\n  const data = JSON.parse(event.data);\n  console.log('Status updated:', data.discord_status);\n};\n```", apiDomain, user.ID),
+					Value: fmt.Sprintf("```javascript\nconst socket = new WebSocket('wss://%s/v1/presence/%s/ws');\n\nsocket.onopen = () => {\n  console.log('Connected to Strelp WebSocket');\n};\n\nsocket.onmessage = (event) => {\n  const data = JSON.parse(event.data);\n  console.log('Status instantly updated:', data.discord_status);\n};\n\nsocket.onclose = () => {\n  console.log('Disconnected. Consider adding reconnection logic.');\n};\n```", apiDomain, user.ID),
+				},
+				{
+					Name:  "Common Errors and Fixes",
+					Value: "**Error: Connection closed immediately**\nFix: Check if the WebSocket URL is correct and starts with wss:// instead of https://.\n\n**Error: No initial data**\nFix: The WebSocket sends an initial message upon connecting. Make sure your onmessage listener is registered immediately.",
 				},
 			},
 		}
