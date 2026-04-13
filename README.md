@@ -41,5 +41,5 @@ Add the following variables in the Railway Dashboard:
    ./bot
    ./api
    ```
-built with <3 by spacebxr 
-based on Phin's Lanyard Project :)
+built with <3 by spacebxr and other contributors.
+A star would be much appreciated.

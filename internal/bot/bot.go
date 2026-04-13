@@ -359,6 +359,10 @@ func (b *Bot) onInteractionCreate(s *discordgo.Session, i *discordgo.Interaction
 								Value: fmt.Sprintf("Showing: %s repos", visibility),
 							},
 							{
+								Name:  "Required Token Permissions",
+								Value: "Your PAT needs the following scopes:\n`repo` — read access to your repositories (required for private repos)\n`read:user` — read your public profile info\n`user:email` — read your email (optional)\n\nFor public repos only, `public_repo` is sufficient instead of `repo`.",
+							},
+							{
 								Name:  "Security",
 								Value: "Your token has been encrypted with AES-256-GCM before being stored. It is never logged or exposed in any API response.",
 							},
