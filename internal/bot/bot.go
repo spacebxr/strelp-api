@@ -218,6 +218,19 @@ func (b *Bot) onInteractionCreate(s *discordgo.Session, i *discordgo.Interaction
 
 	switch data.Name {
 	case "start":
+		var badges []string
+		var nameplate string
+		var clanTag string
+
+		dstnProf, _ := discord.FetchProfile(user.ID)
+		if dstnProf != nil {
+			nameplate = dstnProf.User.Collectibles.Nameplate.Asset
+			clanTag = dstnProf.User.Clan.Tag
+			for _, b := range dstnProf.Badges {
+				badges = append(badges, b.ID)
+			}
+		}
+
 		presence := &models.Presence{
 			User: models.User{
 				ID:         user.ID,
@@ -227,6 +240,16 @@ func (b *Bot) onInteractionCreate(s *discordgo.Session, i *discordgo.Interaction
 			},
 			DiscordStatus: "online",
 			Activities:    []models.Activity{},
+			Badges:        badges,
+			Nameplate:     nameplate,
+			ClanTag:       clanTag,
+		}
+
+		if p, err := s.State.Presence(i.GuildID, user.ID); err == nil && p != nil {
+			presence.DiscordStatus = string(p.Status)
+			presence.Devices.Desktop = p.ClientStatus.Desktop != ""
+			presence.Devices.Mobile = p.ClientStatus.Mobile != ""
+			presence.Devices.Web = p.ClientStatus.Web != ""
 		}
 
 		if err := b.DB.SetPresence(ctx, user.ID, presence); err != nil {
