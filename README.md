@@ -41,7 +41,9 @@ Add the following variables in the Railway Dashboard:
    ./bot
    ./api
    ```
-### API Endpoints
-- https://strelp-api-production.up.railway.app/v1/presence/[Discord USER ID]
+# API Endpoints
+- https://strelp-api-production.up.railway.app/v1/presence/[DiscordUSERID]/
+
+
 built with :heart: by [spacebxr](https://spacebxr.pages.dev) and other contributors.
 A github star would be much appreciated.
