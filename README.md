@@ -50,13 +50,13 @@ Add the following variables in the Railway Dashboard:
 Fetch a user's Discord profile using DSTN API.
 
 **Endpoint:**
-GET /v1/discord/{userID}
+GET /v1/presence/{userID}
 
 **Description:**
 Returns the Discord profile data (badges, clan tag, nameplate, etc.) using the DSTN API.
 
 **Example:**
-/v1/discord/1300318105116872758
+/v1/presence/1300318105116872758
 
-built with :heart: by [spacebxr](https://spacebxr.pages.dev) and other contributors.
+built with :heart: by [spacebxr](https://spacebxr.pages.dev) ,sachfax and other contributors.
 A github star would be much appreciated.
