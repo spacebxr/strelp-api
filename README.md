@@ -4,7 +4,7 @@ High-performance, real-time presence API tracking user activity across Discord, 
 
 ## Features
 - **Real-time Streaming**: WebSocket updates for live presence data.
-- **Discord Integration**: Tracks status, activities, and Spotify.
+- **Discord Integration**: Tracks status, activities, and Spotify all at once.
 - **PostgreSQL Engine**: Reliable persistence with JSONB and LISTEN/NOTIFY.
 - **Opt-in Only**: Only tracks users who explicitly run `/start`.
 
