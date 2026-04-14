@@ -1,11 +1,11 @@
 package models
 
 type User struct {
-	ID          string `json:"id"`
-	Username    string `json:"username"`
-	GlobalName  string `json:"global_name"`
-	Avatar      string `json:"avatar"`
-	Decoration  string `json:"decoration,omitempty"`
+	ID         string `json:"id"`
+	Username   string `json:"username"`
+	GlobalName string `json:"global_name"`
+	Avatar     string `json:"avatar"`
+	Decoration string `json:"decoration,omitempty"`
 }
 
 type Spotify struct {
@@ -41,4 +41,14 @@ type Presence struct {
 	Activities    []Activity `json:"activities"`
 	Spotify       *Spotify   `json:"spotify,omitempty"`
 	GitHub        *GitHub    `json:"github,omitempty"`
+
+	Badges    []string `json:"badges,omitempty"`
+	Nameplate string   `json:"nameplate,omitempty"`
+	ClanTag   string   `json:"clan_tag,omitempty"`
+
+	Devices struct {
+		Desktop bool `json:"desktop"`
+		Mobile  bool `json:"mobile"`
+		Web     bool `json:"web"`
+	} `json:"devices,omitempty"`
 }
