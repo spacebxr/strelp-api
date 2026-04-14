@@ -48,6 +48,9 @@ func main() {
 	if err := b.Start(); err != nil {
 		log.Fatalf("Failed to start bot: %v", err)
 	}
+
+	b.Session.UpdateWatchStatus(0, "you :>")
+
 	log.Println("Bot is now running (Postgres Engine). Press CTRL-C to exit.")
 
 	guildID := os.Getenv("GUILD_ID")
