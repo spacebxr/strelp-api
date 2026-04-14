@@ -41,5 +41,7 @@ Add the following variables in the Railway Dashboard:
    ./bot
    ./api
    ```
+### API Endpoints
+
 built with :heart: by [spacebxr](https://spacebxr.pages.dev) and other contributors.
 A github star would be much appreciated.
