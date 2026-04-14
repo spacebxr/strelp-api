@@ -9,6 +9,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/spacebxr/strelp-api/internal/crypto"
 	"github.com/spacebxr/strelp-api/internal/database"
+	"github.com/spacebxr/strelp-api/internal/discord"
 	"github.com/spacebxr/strelp-api/internal/github"
 	"github.com/spacebxr/strelp-api/internal/models"
 )
@@ -101,6 +102,19 @@ func (b *Bot) onPresenceUpdate(s *discordgo.Session, p *discordgo.PresenceUpdate
 		userObj = cachedUser
 	}
 
+	var badges []string
+	var nameplate string
+	var clanTag string
+
+	dstnProf, _ := discord.FetchProfile(userObj.ID)
+	if dstnProf != nil {
+		nameplate = dstnProf.User.Collectibles.Nameplate.Asset
+		clanTag = dstnProf.User.Clan.Tag
+		for _, b := range dstnProf.Badges {
+			badges = append(badges, b.ID)
+		}
+	}
+
 	presence := &models.Presence{
 		User: models.User{
 			ID:         userObj.ID,
@@ -111,7 +125,14 @@ func (b *Bot) onPresenceUpdate(s *discordgo.Session, p *discordgo.PresenceUpdate
 		DiscordStatus: string(p.Status),
 		Activities:    activities,
 		Spotify:       spotify,
+		Badges:        badges,
+		Nameplate:     nameplate,
+		ClanTag:       clanTag,
 	}
+
+	presence.Devices.Desktop = p.ClientStatus.Desktop != ""
+	presence.Devices.Mobile = p.ClientStatus.Mobile != ""
+	presence.Devices.Web = p.ClientStatus.Web != ""
 
 	if err := b.DB.SetPresence(ctx, p.User.ID, presence); err != nil {
 		log.Printf("[Bot] Error saving presence for %s: %v", p.User.ID, err)

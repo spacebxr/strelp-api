@@ -27,21 +27,18 @@ type DstnProfile struct {
 	} `json:"badges"`
 }
 
-// simple in-memory cache
 var cache = map[string]DstnProfile{}
 var cacheTime = map[string]time.Time{}
 
 const cacheDuration = 5 * time.Minute
 
 func FetchProfile(userID string) (*DstnProfile, error) {
-	// 1. check cache
 	if data, ok := cache[userID]; ok {
 		if time.Since(cacheTime[userID]) < cacheDuration {
 			return &data, nil
 		}
 	}
 
-	// 2. fetch from DSTN
 	url := fmt.Sprintf("https://dcdn.dstn.to/profile/%s", userID)
 
 	resp, err := http.Get(url)
@@ -59,7 +56,6 @@ func FetchProfile(userID string) (*DstnProfile, error) {
 		return nil, err
 	}
 
-	// 3. store cache
 	cache[userID] = data
 	cacheTime[userID] = time.Now()
 
