@@ -31,7 +31,6 @@ func main() {
 		log.Fatal("ENCRYPTION_KEY is required and must be at least 16 characters")
 	}
 
-	// Initialize Database
 	db, err := database.NewDatabase(dbURL)
 	if err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
@@ -39,8 +38,12 @@ func main() {
 	defer db.Close()
 	log.Println("PostgreSQL connected successfully")
 
-	// Initialize Bot
-	b, err := bot.NewBot(token, db, encryptionKey)
+	guildID := os.Getenv("GUILD_ID")
+	if guildID == "" {
+		log.Fatal("GUILD_ID is required to restrict the bot to a single server")
+	}
+
+	b, err := bot.NewBot(token, db, encryptionKey, guildID)
 	if err != nil {
 		log.Fatalf("Failed to initialize bot: %v", err)
 	}
@@ -53,7 +56,6 @@ func main() {
 
 	log.Println("Bot is now running (Postgres Engine). Press CTRL-C to exit.")
 
-	guildID := os.Getenv("GUILD_ID")
 	if err := b.RegisterCommands(guildID); err != nil {
 		log.Printf("Error registering commands: %v", err)
 	}

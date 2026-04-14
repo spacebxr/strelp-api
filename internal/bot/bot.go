@@ -14,21 +14,23 @@ import (
 )
 
 type Bot struct {
-	Session       *discordgo.Session
-	DB            *database.Database
-	EncryptionKey string
+	Session        *discordgo.Session
+	DB             *database.Database
+	EncryptionKey  string
+	AllowedGuildID string
 }
 
-func NewBot(token string, db *database.Database, encryptionKey string) (*Bot, error) {
+func NewBot(token string, db *database.Database, encryptionKey string, allowedGuildID string) (*Bot, error) {
 	dg, err := discordgo.New("Bot " + token)
 	if err != nil {
 		return nil, err
 	}
 
 	b := &Bot{
-		Session:       dg,
-		DB:            db,
-		EncryptionKey: encryptionKey,
+		Session:        dg,
+		DB:             db,
+		EncryptionKey:  encryptionKey,
+		AllowedGuildID: allowedGuildID,
 	}
 
 	dg.Identify.Intents = discordgo.IntentGuildPresences | discordgo.IntentGuildMembers | discordgo.IntentGuilds
@@ -45,9 +47,12 @@ func (b *Bot) Start() error {
 }
 
 func (b *Bot) onPresenceUpdate(s *discordgo.Session, p *discordgo.PresenceUpdate) {
+	if p.GuildID != b.AllowedGuildID {
+		return
+	}
+
 	ctx := context.Background()
 
-	// Check if user is opted-in - spacebxr
 	_, err := b.DB.GetPresence(ctx, p.User.ID)
 	if err != nil {
 		return
@@ -89,7 +94,6 @@ func (b *Bot) onPresenceUpdate(s *discordgo.Session, p *discordgo.PresenceUpdate
 		}
 	}
 
-	// Retrieve full User object since PresenceUpdate often omits fields - spacebxr
 	userObj := p.User
 	if cachedMember, err := s.State.Member(p.GuildID, p.User.ID); err == nil {
 		userObj = cachedMember.User
@@ -115,6 +119,10 @@ func (b *Bot) onPresenceUpdate(s *discordgo.Session, p *discordgo.PresenceUpdate
 }
 
 func (b *Bot) onMemberRemove(s *discordgo.Session, m *discordgo.GuildMemberRemove) {
+	if m.GuildID != b.AllowedGuildID {
+		return
+	}
+
 	ctx := context.Background()
 	log.Printf("[Bot] User %s left, deleting data...", m.User.ID)
 	b.DB.DeletePresence(ctx, m.User.ID)
@@ -171,6 +179,10 @@ func (b *Bot) RegisterCommands(guildID string) error {
 }
 
 func (b *Bot) onInteractionCreate(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	if i.GuildID != b.AllowedGuildID {
+		return
+	}
+
 	if i.Type != discordgo.InteractionApplicationCommand {
 		return
 	}

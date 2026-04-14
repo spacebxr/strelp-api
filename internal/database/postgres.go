@@ -25,7 +25,6 @@ func NewDatabase(connString string) (*Database, error) {
 		return nil, err
 	}
 
-	// Ping the database
 	if err := pool.Ping(context.Background()); err != nil {
 		return nil, fmt.Errorf("could not ping database: %v", err)
 	}

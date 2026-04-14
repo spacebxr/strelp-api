@@ -12,7 +12,7 @@ var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 	CheckOrigin: func(r *http.Request) bool {
-		return true 
+		return true
 	},
 }
 
@@ -32,7 +32,6 @@ func (s *Server) handleStreamPresence(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[API] Client connected for streaming: %s", userID)
 
-	// Send initial state
 	presence, err := s.DB.GetPresence(r.Context(), userID)
 	if err == nil {
 		if err := conn.WriteJSON(presence); err != nil {
@@ -41,8 +40,6 @@ func (s *Server) handleStreamPresence(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Listen for notifications
-	// Acquire a dedicated connection for LISTEN
 	dbConn, err := s.DB.AcquireConn(r.Context())
 	if err != nil {
 		log.Printf("[API] Error acquiring conn for LISTEN: %v", err)
@@ -50,7 +47,6 @@ func (s *Server) handleStreamPresence(w http.ResponseWriter, r *http.Request) {
 	}
 	defer dbConn.Release()
 
-	// Execute LISTEN
 	_, err = dbConn.Exec(r.Context(), "LISTEN presence_updates")
 	if err != nil {
 		log.Printf("[API] Error executing LISTEN: %v", err)
@@ -58,15 +54,12 @@ func (s *Server) handleStreamPresence(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for {
-		// Wait for notification
 		notification, err := dbConn.Conn().WaitForNotification(r.Context())
 		if err != nil {
 			log.Printf("[API] Notification error: %v", err)
 			return
 		}
 
-		// Check if the notification is for the specific user we are watching
-		// notification.Payload contains the user_id (sent by pg_notify trigger)
 		if notification.Payload == userID {
 			presence, err := s.DB.GetPresence(r.Context(), userID)
 			if err == nil {
