@@ -43,7 +43,7 @@ Add the following variables in the Railway Dashboard:
    ```
 # API Endpoints
 - https://strelp-api-production.up.railway.app/v1/presence/[DiscordUSERID]/
-
+- https://strelp-api-production.up.railway.app/v1/poller-status/
 
 built with :heart: by [spacebxr](https://spacebxr.pages.dev) and other contributors.
 A github star would be much appreciated.
