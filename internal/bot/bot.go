@@ -104,7 +104,7 @@ func (b *Bot) onPresenceUpdate(s *discordgo.Session, p *discordgo.PresenceUpdate
 		userObj = cachedUser
 	}
 
-	var badges []string
+	var badges []models.Badge
 	var nameplate string
 	var clanTag string
 
@@ -112,8 +112,15 @@ func (b *Bot) onPresenceUpdate(s *discordgo.Session, p *discordgo.PresenceUpdate
 	if dstnProf != nil {
 		nameplate = dstnProf.User.Collectibles.Nameplate.Asset
 		clanTag = dstnProf.User.Clan.Tag
-		for _, b := range dstnProf.Badges {
-			badges = append(badges, b.ID)
+		for _, bg := range dstnProf.Badges {
+			iconKey := bg.Icon
+			if iconKey == "" {
+				iconKey = bg.ID
+			}
+			badges = append(badges, models.Badge{
+				ID:      bg.ID,
+				IconURL: fmt.Sprintf("https://cdn.discordapp.com/badge-icons/%s.png", iconKey),
+			})
 		}
 	}
 
@@ -224,7 +231,7 @@ func (b *Bot) onInteractionCreate(s *discordgo.Session, i *discordgo.Interaction
 
 	switch data.Name {
 	case "start":
-		var badges []string
+		var badges []models.Badge
 		var nameplate string
 		var clanTag string
 
@@ -232,8 +239,15 @@ func (b *Bot) onInteractionCreate(s *discordgo.Session, i *discordgo.Interaction
 		if dstnProf != nil {
 			nameplate = dstnProf.User.Collectibles.Nameplate.Asset
 			clanTag = dstnProf.User.Clan.Tag
-			for _, b := range dstnProf.Badges {
-				badges = append(badges, b.ID)
+			for _, bg := range dstnProf.Badges {
+				iconKey := bg.Icon
+				if iconKey == "" {
+					iconKey = bg.ID
+				}
+				badges = append(badges, models.Badge{
+					ID:      bg.ID,
+					IconURL: fmt.Sprintf("https://cdn.discordapp.com/badge-icons/%s.png", iconKey),
+				})
 			}
 		}
 
@@ -505,7 +519,7 @@ func (b *Bot) onInteractionCreate(s *discordgo.Session, i *discordgo.Interaction
 					continue
 				}
 
-				var badges []string
+				var badges []models.Badge
 				var nameplate string
 				var clanTag string
 
@@ -514,7 +528,14 @@ func (b *Bot) onInteractionCreate(s *discordgo.Session, i *discordgo.Interaction
 					nameplate = dstnProf.User.Collectibles.Nameplate.Asset
 					clanTag = dstnProf.User.Clan.Tag
 					for _, bg := range dstnProf.Badges {
-						badges = append(badges, bg.ID)
+						iconKey := bg.Icon
+						if iconKey == "" {
+							iconKey = bg.ID
+						}
+						badges = append(badges, models.Badge{
+							ID:      bg.ID,
+							IconURL: fmt.Sprintf("https://cdn.discordapp.com/badge-icons/%s.png", iconKey),
+						})
 					}
 				}
 

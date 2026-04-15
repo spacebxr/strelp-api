@@ -23,7 +23,8 @@ type DstnProfile struct {
 	} `json:"user"`
 
 	Badges []struct {
-		ID string `json:"id"`
+		ID   string `json:"id"`
+		Icon string `json:"icon"`
 	} `json:"badges"`
 }
 
