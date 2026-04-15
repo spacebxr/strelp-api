@@ -58,5 +58,7 @@ Returns the Discord profile data (badges, clan tag, nameplate, etc.) using the D
 **Example:**
 /v1/presence/1300318105116872758
 
+# Refer to /docs for other documents 
+---
 built with :heart: by [spacebxr](https://spacebxr.pages.dev) ,sachfax and other contributors.
 A github star would be much appreciated.
