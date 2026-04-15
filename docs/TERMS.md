@@ -28,6 +28,7 @@ We are not responsible for any data loss, privacy breaches resulting from shared
 Self-hosted Discord bots or services utilizing Strelp's API or source code are the sole responsibility of the individuals or entities hosting them. We do not monitor, support, or take responsibility for the security or data practices of these instances.
 
 For your safety, you should only trust and provide data to bots that are officially licensed and verified by the Strelp Development and Management team.
+To get your bot verified and licensed, DM (@spacebxr.) or (@the_sachfax) on Discord. There will be a custom fee to get it licensed and additional terms which will be discussed in the DM.
 
 ## Changes to Terms
 We may update these terms as the service evolves. Continued use of Strelp after changes means you accept the new terms.
