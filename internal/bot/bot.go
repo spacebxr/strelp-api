@@ -277,8 +277,14 @@ func (b *Bot) onInteractionCreate(s *discordgo.Session, i *discordgo.Interaction
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
 				Data: &discordgo.InteractionResponseData{
-					Content: "Failed to start tracking. Please try again later.",
-					Flags:   discordgo.MessageFlagsEphemeral,
+					Embeds: []*discordgo.MessageEmbed{
+						{
+							Title:       "Something went wrong",
+							Description: "Failed to start tracking your presence. Please try again in a moment. If this keeps happening, reach out to a server admin.",
+							Color:       0xED4245,
+						},
+					},
+					Flags: discordgo.MessageFlagsEphemeral,
 				},
 			})
 			return
@@ -290,21 +296,25 @@ func (b *Bot) onInteractionCreate(s *discordgo.Session, i *discordgo.Interaction
 		}
 
 		embed := &discordgo.MessageEmbed{
-			Title:       "Strelp Tracking Started Successfully",
-			Description: "Your presence is now being actively tracked and is ready to be fetched.",
-			Color:       0x00FF00,
+			Title:       "Tracking Started",
+			Description: fmt.Sprintf("Your presence is now live. Use the endpoint below to fetch your real-time Discord status from anywhere.\n\n**Your endpoint:**\n`https://%s/v1/presence/%s`", apiDomain, user.ID),
+			Color:       0x57F287,
 			Fields: []*discordgo.MessageEmbedField{
 				{
-					Name:  "Your API Endpoint",
-					Value: fmt.Sprintf("Make a standard HTTP GET request to:\n`https://%s/v1/presence/%s`", apiDomain, user.ID),
+					Name:  "Fetch — JavaScript",
+					Value: fmt.Sprintf("```js\nfetch('https://%s/v1/presence/%s')\n  .then(res => res.json())\n  .then(data => {\n    console.log(data.discord_status);\n    console.log(data.user.global_name);\n    console.log(data.activities);\n  });\n```", apiDomain, user.ID),
 				},
 				{
-					Name:  "How to use it with Code",
-					Value: fmt.Sprintf("```javascript\nfetch('https://%s/v1/presence/%s')\n  .then(res => res.json())\n  .then(data => console.log('Current status:', data.discord_status));\n```", apiDomain, user.ID),
+					Name:  "WebSocket — Real-time Updates",
+					Value: fmt.Sprintf("For instant updates without polling, connect to the WebSocket endpoint:\n`wss://%s/v1/presence/%s/ws`\nRun `/ws` for a full example.", apiDomain, user.ID),
 				},
 				{
-					Name:  "Common Errors and Fixes",
-					Value: "**Error: 404 Not Found**\nFix: Ensure you have run the /start command. Data is only stored while the bot is tracking you.\n\n**Error: CORS Blocked**\nFix: The API allows cross-origin requests by default. If you encounter CORS issues, verify that you are not sending custom restricted headers without setting them up properly.",
+					Name:  "Response Fields",
+					Value: "`discord_status` — online / idle / dnd / offline\n`user` — id, username, global_name, avatar URL\n`activities` — current games or activities\n`spotify` — track, artist, album, album art, timestamps\n`github` — latest commit, repo, URL\n`badges` — id and icon_url for each badge\n`devices` — desktop, mobile, web (boolean)",
+				},
+				{
+					Name:  "Troubleshooting",
+					Value: "**404 Not Found** — Run `/start` first. Your data only exists while tracking is active.\n**Stale data** — Presence updates are pushed by Discord in real-time. If your status looks wrong, change it on Discord and it will refresh automatically.",
 				},
 			},
 		}
@@ -322,8 +332,14 @@ func (b *Bot) onInteractionCreate(s *discordgo.Session, i *discordgo.Interaction
 		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
 			Data: &discordgo.InteractionResponseData{
-				Content: "Strelp tracking stopped. Your data has been removed from the database.",
-				Flags:   discordgo.MessageFlagsEphemeral,
+				Embeds: []*discordgo.MessageEmbed{
+					{
+						Title:       "Tracking Stopped",
+						Description: "Your presence data has been removed from the database. Your API endpoint will return 404 until you run `/start` again.\n\nYour GitHub connection, if any, has not been removed — use `/gitstop` to disconnect that separately.",
+						Color:       0xFEE75C,
+					},
+				},
+				Flags: discordgo.MessageFlagsEphemeral,
 			},
 		})
 
@@ -334,21 +350,21 @@ func (b *Bot) onInteractionCreate(s *discordgo.Session, i *discordgo.Interaction
 		}
 
 		embed := &discordgo.MessageEmbed{
-			Title:       "Using WebSockets for Real-Time Presence",
-			Description: "WebSockets allow your website to receive instant presence updates seamlessly without constant API fetching.",
-			Color:       0x00B0F4,
+			Title:       "Real-Time Presence via WebSocket",
+			Description: fmt.Sprintf("WebSockets push updates to your app the instant your Discord status changes — no polling required.\n\n**Your WebSocket URL:**\n`wss://%s/v1/presence/%s/ws`", apiDomain, user.ID),
+			Color:       0x5865F2,
 			Fields: []*discordgo.MessageEmbedField{
 				{
-					Name:  "Connection URL",
-					Value: fmt.Sprintf("`wss://%s/v1/presence/%s/ws`", apiDomain, user.ID),
+					Name:  "JavaScript Example",
+					Value: fmt.Sprintf("```js\nconst ws = new WebSocket('wss://%s/v1/presence/%s/ws');\n\nws.onopen = () => {\n  console.log('Connected');\n};\n\nws.onmessage = (event) => {\n  const data = JSON.parse(event.data);\n  // data is the full presence object\n  console.log(data.discord_status);\n  console.log(data.spotify?.track);\n};\n\nws.onclose = () => {\n  // reconnect after a delay\n  setTimeout(() => location.reload(), 3000);\n};\n```", apiDomain, user.ID),
 				},
 				{
-					Name:  "Quick Javascript Example",
-					Value: fmt.Sprintf("```javascript\nconst socket = new WebSocket('wss://%s/v1/presence/%s/ws');\n\nsocket.onopen = () => {\n  console.log('Connected to Strelp WebSocket');\n};\n\nsocket.onmessage = (event) => {\n  const data = JSON.parse(event.data);\n  console.log('Status instantly updated:', data.discord_status);\n};\n\nsocket.onclose = () => {\n  console.log('Disconnected. Consider adding reconnection logic.');\n};\n```", apiDomain, user.ID),
+					Name:  "Behaviour",
+					Value: "The server sends the full presence object immediately on connect, then pushes a new payload every time your status or activity changes. There is no need to send any messages to the server.",
 				},
 				{
-					Name:  "Common Errors and Fixes",
-					Value: "**Error: Connection closed immediately**\nFix: Check if the WebSocket URL is correct and starts with wss:// instead of https://.\n\n**Error: No initial data**\nFix: The WebSocket sends an initial message upon connecting. Make sure your onmessage listener is registered immediately.",
+					Name:  "Troubleshooting",
+					Value: "**Connection closes instantly** — Make sure the URL uses `wss://` not `https://`. Confirm `/start` has been run.\n**No initial message** — Register your `onmessage` handler before the connection opens.\n**Reconnection** — The server will close idle or errored connections. Add a reconnect loop in your client.",
 				},
 			},
 		}
@@ -378,8 +394,20 @@ func (b *Bot) onInteractionCreate(s *discordgo.Session, i *discordgo.Interaction
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
 				Data: &discordgo.InteractionResponseData{
-					Content: fmt.Sprintf("Could not validate your GitHub token: %v. Make sure you are using a valid Personal Access Token.", err),
-					Flags:   discordgo.MessageFlagsEphemeral,
+					Embeds: []*discordgo.MessageEmbed{
+						{
+							Title:       "Invalid GitHub Token",
+							Description: fmt.Sprintf("Could not authenticate with the token you provided.\n\n**Error:** %v", err),
+							Color:       0xED4245,
+							Fields: []*discordgo.MessageEmbedField{
+								{
+									Name:  "How to create a token",
+									Value: "Go to **GitHub → Settings → Developer settings → Personal access tokens** and generate a new token. For Classic PATs, enable the `repo` and `read:user` scopes. For Fine-Grained PATs, grant Read-only access to Contents and Metadata.",
+								},
+							},
+						},
+					},
+					Flags: discordgo.MessageFlagsEphemeral,
 				},
 			})
 			return
@@ -391,8 +419,14 @@ func (b *Bot) onInteractionCreate(s *discordgo.Session, i *discordgo.Interaction
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
 				Data: &discordgo.InteractionResponseData{
-					Content: "An internal error occurred. Please try again later.",
-					Flags:   discordgo.MessageFlagsEphemeral,
+					Embeds: []*discordgo.MessageEmbed{
+						{
+							Title:       "Something went wrong",
+							Description: "An internal error occurred while securing your token. Please try again in a moment.",
+							Color:       0xED4245,
+						},
+					},
+					Flags: discordgo.MessageFlagsEphemeral,
 				},
 			})
 			return
@@ -414,8 +448,14 @@ func (b *Bot) onInteractionCreate(s *discordgo.Session, i *discordgo.Interaction
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
 				Data: &discordgo.InteractionResponseData{
-					Content: "Failed to save your GitHub settings. Please try again. ",
-					Flags:   discordgo.MessageFlagsEphemeral,
+					Embeds: []*discordgo.MessageEmbed{
+						{
+							Title:       "Failed to save settings",
+							Description: "Could not save your GitHub settings to the database. Please try again. If the issue persists, contact a server admin.",
+							Color:       0xED4245,
+						},
+					},
+					Flags: discordgo.MessageFlagsEphemeral,
 				},
 			})
 			return
@@ -427,20 +467,20 @@ func (b *Bot) onInteractionCreate(s *discordgo.Session, i *discordgo.Interaction
 				Embeds: []*discordgo.MessageEmbed{
 					{
 						Title:       "GitHub Connected",
-						Description: fmt.Sprintf("Your GitHub account **%s** has been linked. Your latest commits will appear in your presence within 5 minutes.", ghUsername),
-						Color:       0x24292e,
+						Description: fmt.Sprintf("Your GitHub account **%s** is now linked. Commit data will appear in your API presence within 5 minutes and will update every 5 minutes after that.", ghUsername),
+						Color:       0x238636,
 						Fields: []*discordgo.MessageEmbedField{
 							{
-								Name:  "Visibility",
-								Value: fmt.Sprintf("Showing: %s repos", visibility),
+								Name:  "Visibility Setting",
+								Value: fmt.Sprintf("Currently set to show **%s** repositories. You can change this at any time by running `/git` again with a different visibility option.", visibility),
 							},
 							{
-								Name:  "Required Token Permissions",
-								Value: "**Classic PATs**:\n`repo` — read access (required for private repos)\n`read:user` — read public profile info\n*(For public repos only, `public_repo` is sufficient)*\n\n**Fine-Grained PATs**:\nRequire **Read-only** access to **Contents** and **Metadata** for the selected repositories.",
+								Name:  "What appears in the API",
+								Value: "The `github` field in your presence will contain:\n`username` — your GitHub username\n`last_commit` — the message of your most recent commit\n`repo` — the repository it was pushed to\n`url` — a direct link to the commit\n`private` — whether the repo is private\n`updated_at` — Unix timestamp of the commit",
 							},
 							{
 								Name:  "Security",
-								Value: "Your token has been encrypted with AES-256-GCM before being stored. It is never logged or exposed in any API response.",
+								Value: "Your token is encrypted with AES-256-GCM before being stored. It is never logged, cached in plaintext, or returned by the API. Run `/gitstop` at any time to revoke access and purge your data.",
 							},
 						},
 					},
@@ -461,8 +501,14 @@ func (b *Bot) onInteractionCreate(s *discordgo.Session, i *discordgo.Interaction
 		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
 			Data: &discordgo.InteractionResponseData{
-				Content: "GitHub disconnected. Your commit data has been removed from your presence and your data has been cleared from our database, any loss of data now will not be our responsibility.",
-				Flags:   discordgo.MessageFlagsEphemeral,
+				Embeds: []*discordgo.MessageEmbed{
+					{
+						Title:       "GitHub Disconnected",
+						Description: "Your GitHub account has been unlinked. Your encrypted token and all commit data have been permanently deleted from the database.\n\nThe `github` field will no longer appear in your API response. Your presence tracking via `/start` is still active.",
+						Color:       0xFEE75C,
+					},
+				},
+				Flags: discordgo.MessageFlagsEphemeral,
 			},
 		})
 
@@ -486,8 +532,14 @@ func (b *Bot) onInteractionCreate(s *discordgo.Session, i *discordgo.Interaction
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
 				Data: &discordgo.InteractionResponseData{
-					Content: "You do not have permission to use this command.",
-					Flags:   discordgo.MessageFlagsEphemeral,
+					Embeds: []*discordgo.MessageEmbed{
+						{
+							Title:       "Access Denied",
+							Description: "You do not have a role that is permitted to run `/sync`. Contact a server admin if you believe this is a mistake.",
+							Color:       0xED4245,
+						},
+					},
+					Flags: discordgo.MessageFlagsEphemeral,
 				},
 			})
 			return
@@ -573,9 +625,15 @@ func (b *Bot) onInteractionCreate(s *discordgo.Session, i *discordgo.Interaction
 				count++
 			}
 
-			successMsg := fmt.Sprintf("Successfully synced %d users to the latest version.", count)
+			emptyStr := ""
+			successEmbed := &discordgo.MessageEmbed{
+				Title:       "Sync Complete",
+				Description: fmt.Sprintf("Successfully synced **%d** tracked users to the latest version.\n\nBadges, nameplates, clan tags, and profile data have all been refreshed.", count),
+				Color:       0x57F287,
+			}
 			s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
-				Content: &successMsg,
+				Content: &emptyStr,
+				Embeds:  &[]*discordgo.MessageEmbed{successEmbed},
 			})
 		}()
 	}
