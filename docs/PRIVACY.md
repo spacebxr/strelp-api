@@ -29,5 +29,8 @@ You have full control over your data:
 ## Security
 We take security seriously and use industry-standard encryption for sensitive data like tokens. However, no service is 100% secure, and we encourage you to use fine-grained GitHub tokens with limited scopes.
 
+## Official Service Only
+This policy applies exclusively to the official Strelp bot and API. We have no control over, and assume no responsibility for, the privacy or security of any data you provide to self-hosted versions of Strelp or third-party bots using our code or API.
+
 ## Contact
 If you have questions about your data or our privacy practices, please contact us through our Discord server.

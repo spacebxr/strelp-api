@@ -24,5 +24,10 @@ Please do not use Strelp for any malicious activities, including but not limited
 ## Disclaimers
 We are not responsible for any data loss, privacy breaches resulting from shared information, or any damages arising from your use of the service. You use Strelp at your own risk.
 
+## Self-Hosted and Third-Party Bots
+Self-hosted Discord bots or services utilizing Strelp's API or source code are the sole responsibility of the individuals or entities hosting them. We do not monitor, support, or take responsibility for the security or data practices of these instances.
+
+For your safety, you should only trust and provide data to bots that are officially licensed and verified by the Strelp Development and Management team.
+
 ## Changes to Terms
 We may update these terms as the service evolves. Continued use of Strelp after changes means you accept the new terms.
