@@ -19,9 +19,10 @@ type Bot struct {
 	DB             *database.Database
 	EncryptionKey  string
 	AllowedGuildID string
+	SyncRoles      []string
 }
 
-func NewBot(token string, db *database.Database, encryptionKey string, allowedGuildID string) (*Bot, error) {
+func NewBot(token string, db *database.Database, encryptionKey string, allowedGuildID string, syncRoles []string) (*Bot, error) {
 	dg, err := discordgo.New("Bot " + token)
 	if err != nil {
 		return nil, err
@@ -32,6 +33,7 @@ func NewBot(token string, db *database.Database, encryptionKey string, allowedGu
 		DB:             db,
 		EncryptionKey:  encryptionKey,
 		AllowedGuildID: allowedGuildID,
+		SyncRoles:      syncRoles,
 	}
 
 	dg.Identify.Intents = discordgo.IntentGuildPresences | discordgo.IntentGuildMembers | discordgo.IntentGuilds
@@ -189,6 +191,10 @@ func (b *Bot) RegisterCommands(guildID string) error {
 		{
 			Name:        "gitstop",
 			Description: "Disconnect your GitHub account and stop showing commit data",
+		},
+		{
+			Name:        "sync",
+			Description: "Sync all tracked users presence to the latest version (Staff Only)",
 		},
 	}
 
@@ -445,5 +451,111 @@ func (b *Bot) onInteractionCreate(s *discordgo.Session, i *discordgo.Interaction
 				Flags:   discordgo.MessageFlagsEphemeral,
 			},
 		})
+
+	case "sync":
+		isAllowed := false
+		if i.Member != nil {
+			for _, userRole := range i.Member.Roles {
+				for _, allowedRole := range b.SyncRoles {
+					if userRole == allowedRole {
+						isAllowed = true
+						break
+					}
+				}
+				if isAllowed {
+					break
+				}
+			}
+		}
+
+		if !isAllowed {
+			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+				Type: discordgo.InteractionResponseChannelMessageWithSource,
+				Data: &discordgo.InteractionResponseData{
+					Content: "You do not have permission to use this command.",
+					Flags:   discordgo.MessageFlagsEphemeral,
+				},
+			})
+			return
+		}
+
+		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Flags: discordgo.MessageFlagsEphemeral,
+			},
+		})
+
+		userIDs, err := b.DB.GetAllTrackedUserIDs(ctx)
+		if err != nil {
+			log.Printf("[Bot] Failed to get tracked users for sync: %v", err)
+			msg := "Internal error while fetching users."
+			s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+				Content: &msg,
+			})
+			return
+		}
+
+		go func() {
+			count := 0
+			for _, userID := range userIDs {
+				userObj, err := s.User(userID)
+				if err != nil {
+					log.Printf("[Bot] Failed to fetch user %s during sync: %v", userID, err)
+					continue
+				}
+
+				var badges []string
+				var nameplate string
+				var clanTag string
+
+				dstnProf, _ := discord.FetchProfile(userID)
+				if dstnProf != nil {
+					nameplate = dstnProf.User.Collectibles.Nameplate.Asset
+					clanTag = dstnProf.User.Clan.Tag
+					for _, bg := range dstnProf.Badges {
+						badges = append(badges, bg.ID)
+					}
+				}
+
+				presence, err := b.DB.GetPresence(ctx, userID)
+				if err != nil {
+					presence = &models.Presence{
+						User: models.User{
+							ID:         userID,
+							Username:   userObj.Username,
+							GlobalName: userObj.GlobalName,
+							Avatar:     userObj.AvatarURL("1024"),
+						},
+					}
+				} else {
+					presence.User.Username = userObj.Username
+					presence.User.GlobalName = userObj.GlobalName
+					presence.User.Avatar = userObj.AvatarURL("1024")
+				}
+
+				presence.Badges = badges
+				presence.Nameplate = nameplate
+				presence.ClanTag = clanTag
+
+				if p, err := s.State.Presence(i.GuildID, userID); err == nil && p != nil {
+					presence.DiscordStatus = string(p.Status)
+					presence.Devices.Desktop = p.ClientStatus.Desktop != ""
+					presence.Devices.Mobile = p.ClientStatus.Mobile != ""
+					presence.Devices.Web = p.ClientStatus.Web != ""
+				}
+
+				if err := b.DB.SetPresence(ctx, userID, presence); err != nil {
+					log.Printf("[Bot] Error updating presence for %s during sync: %v", userID, err)
+					continue
+				}
+				count++
+			}
+
+			successMsg := fmt.Sprintf("Successfully synced %d users to the latest version.", count)
+			s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
+				Content: &successMsg,
+			})
+		}()
 	}
 }
