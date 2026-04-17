@@ -1,32 +1,26 @@
 # Testing the GitHub Poller
 
-This guide explains how to get a GitHub Personal Access Token and verify that the GitHub poller is working correctly. It is written for contributors setting things up for the first time.
+This guide explains how to get a GitHub Personal Access Token and verify that the GitHub polling system is detecting your commits correctly. It is written for contributors mapping out their development environments for the first time.
 
 ---
 
 ## Step 1: Get a GitHub Personal Access Token
 
-The poller needs a token to read your GitHub activity on your behalf. Here is how to get one.
+The poller needs a token to read your GitHub activity on your behalf.
 
 ### Classic PAT (Recommended for simplicity)
 
-1. Go to [github.com/settings/tokens](https://github.com/settings/tokens) and click **Generate new token (classic)**.
-2. Give it a name like `strelp-dev`.
-3. Set an expiration that suits you (30 days is fine for testing).
-4. Under **Scopes**, tick the following:
-   - `repo` — needed if you want to track private repository commits.
-   - `read:user` — needed to verify your username when linking the token.
-   - If you only care about public repos, `public_repo` is enough instead of `repo`.
-5. Scroll to the bottom and click **Generate token**.
-6. Copy the token immediately. GitHub will NOT show it again.
+1. Go to github.com/settings/tokens and generate a new classic token.
+2. Give it an easily identifiable name.
+3. Set an expiration that suits you for your testing period.
+4. Under the Scopes section, tick `repo` (if you want to track private repositories) and `read:user` (to verify your username). If you only want to track public repos, `public_repo` is enough.
+5. Generate the token and copy it immediately, as GitHub will not show it again.
 
-### Fine-Grained PAT (More secure, slightly more setup)
+### Fine-Grained PAT
 
-1. Go to [github.com/settings/tokens?type=beta](https://github.com/settings/tokens?type=beta) and click **Generate new token**.
-2. Under **Repository access**, select the specific repositories you want tracked, or choose **All repositories**.
-3. Under **Permissions**, set the following to **Read-only**:
-   - `Contents`
-   - `Metadata`
+1. Go to your GitHub developer settings and generate a new fine-grained token.
+2. Under Repository access, choose either "All repositories" or select specific ones. You must do this first, or the necessary permission options will not be visible.
+3. Once repository access is set, scroll down and set `Contents` and `Metadata` permissions to Read-only.
 4. Generate and copy the token.
 
 ---
@@ -35,70 +29,36 @@ The poller needs a token to read your GitHub activity on your behalf. Here is ho
 
 Once you have your token, head to the Discord server where the bot is running and use the `/git` command.
 
-- **token**: paste the token you just generated.
-- **visibility**: choose what kind of repos you want to appear in your presence.
-  - `public` — only public repository pushes.
-  - `private` — only private repository pushes.
-  - `both` — everything.
-
-If the token is valid, the bot will confirm with a success message and your GitHub username.
+You will provide your token and specify your visibility preference, determining whether you want the bot to track public pushes, private pushes, or both. If the token is valid, the bot will confirm it has been successfully encrypted and saved alongside your username.
 
 ---
 
 ## Step 3: Trigger the Poller
 
-The poller runs automatically every 5 minutes. To see it work without waiting:
+The poller ordinarily runs completely automatically in the background every five minutes. If you want to see it work immediately without waiting:
 
-1. Make a commit to one of your repositories and push it to GitHub.
-2. Restart the bot locally. On startup, the poller runs an immediate check before entering its 5-minute loop.
+1. Make a real commit to one of your tracked repositories and push it to GitHub.
+2. Restart the API server locally. When the API service boots up, the poller executes an initial check right away before entering its five-minute loop.
 
-```bash
-go build -o bot ./cmd/bot && ./bot
-```
+You will see a log line in your terminal indicating how many users are being polled.
 
-You should see a log line like this in your terminal shortly after boot:
-
-```
-[GitHub] Polling 1 user(s)
-```
+Because GitHub removed commit messages natively from their public Events API payloads, the poller now parses the push event for the latest commit SHA and then makes a secondary, authenticated REST API call to directly pull your commit message.
 
 ---
 
 ## Step 4: Verify the Result
 
-Once the poller has run, check your presence endpoint to confirm the GitHub data was saved:
+Once the poller has finished running, hit your local presence endpoint in your browser or a tool like cURL:
 
-```
-GET http://localhost:<PORT>/v1/presence/<YOUR_DISCORD_USER_ID>
-```
+`GET http://localhost:<PORT>/v1/presence/<YOUR_DISCORD_USER_ID>`
 
-In the JSON response, you should see a `github` field populated with your repo name, the last commit message, and a timestamp. Example:
-
-```json
-"github": {
-  "username": "your-github-username",
-  "repo": "your-org/your-repo",
-  "url": "https://github.com/your-org/your-repo",
-  "last_commit": "fix: resolve null pointer in presence handler",
-  "private": false,
-  "updated_at": 1713024000
-}
-```
-
-If the field is `null` or missing, check the terminal logs for errors. Common issues are covered below.
+In the JSON response, you should see a `github` object populated with your repository name, the specific commit message that was fetched, whether it was a private repository, and a timestamp. 
 
 ---
 
 ## Troubleshooting
 
-**`[GitHub] Failed to decrypt token for <userID>`**
-The `ENCRYPTION_KEY` environment variable might have changed since the token was stored. Run `/gitstop` and link your account again with `/git`.
-
-**`[GitHub] Non-200 response for <username>: 401`**
-The token has expired or been revoked. Generate a new one and re-run `/git`.
-
-**`[GitHub] Non-200 response for <username>: 403`**
-The token does not have the required scopes. Check Step 1 and make sure the correct permissions are selected.
-
-**`github` field is null after the poller ran**
-The poller only picks up `PushEvent` entries. Make sure you pushed an actual commit after linking your account. Also verify your visibility setting matches the repo type (public vs private).
+- If you see "Failed to decrypt token" in your logs, the `ENCRYPTION_KEY` environment variable has likely changed since the token was first stored. Run the stop command in Discord and link your account again.
+- A 401 error means your token has expired or been revoked by GitHub.
+- A 403 error means your token does not have the necessary scopes. This is common if you are using a fine-grained token but failed to give it Contents and Metadata permissions.
+- If the github field is entirely absent after the poller runs, ensure you actually pushed a commit after linking your account, and that your visibility settings match the repository type you pushed to.
