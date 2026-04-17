@@ -51,7 +51,7 @@ func main() {
 	defer pollerCancel()
 	p := &github.Poller{DB: db, EncryptionKey: encryptionKey}
 	go p.Start(pollerCtx)
-	log.Println("GitHub poller started (30-second interval)")
+	log.Println("GitHub poller started (5-minute interval)")
 
 	server := api.NewServer(db)
 

@@ -36,7 +36,7 @@ type ghUser struct {
 }
 
 func (p *Poller) Start(ctx context.Context) {
-	ticker := time.NewTicker(30 * time.Second)
+	ticker := time.NewTicker(5 * time.Minute)
 	defer ticker.Stop()
 
 	p.pollAll(ctx)
