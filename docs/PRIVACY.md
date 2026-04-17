@@ -41,4 +41,4 @@ This policy applies exclusively to the official public Strelp bot and API. We ha
 
 ## Contact
 
-If you have questions about your data or our privacy practices, please contact our developers via the main server.
+If you have questions about your data or our privacy practices, please contact our developers via the main server. (@spacebxr.) (@the_sachfax)
