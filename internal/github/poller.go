@@ -26,9 +26,7 @@ type ghEvent struct {
 		Private bool   `json:"private"`
 	} `json:"repo"`
 	Payload struct {
-		Commits []struct {
-			Message string `json:"message"`
-		} `json:"commits"`
+		Head string `json:"head"`
 	} `json:"payload"`
 	CreatedAt time.Time `json:"created_at"`
 }
@@ -130,8 +128,13 @@ func (p *Poller) pollUser(ctx context.Context, userID, ghUsername, token string,
 			UpdatedAt: event.CreatedAt.Unix(),
 		}
 
-		if len(event.Payload.Commits) > 0 {
-			ghData.LastCommit = event.Payload.Commits[0].Message
+		if event.Payload.Head != "" {
+			msg, err := fetchCommitMessage(ctx, token, event.Repo.Name, event.Payload.Head)
+			if err != nil {
+				log.Printf("[GitHub] Failed to fetch commit message for %s: %v", ghUsername, err)
+			} else {
+				ghData.LastCommit = msg
+			}
 		}
 
 		presence.GitHub = ghData
@@ -146,6 +149,48 @@ func (p *Poller) pollUser(ctx context.Context, userID, ghUsername, token string,
 	if !foundPush {
 		log.Printf("[GitHub] No qualifying PushEvent found in recent events for %s", ghUsername)
 	}
+}
+
+func fetchCommitMessage(ctx context.Context, token, repo, sha string) (string, error) {
+	if sha == "" {
+		return "", fmt.Errorf("sha is empty")
+	}
+	url := fmt.Sprintf("https://api.github.com/repos/%s/commits/%s", repo, sha)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("status was %d", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	var data struct {
+		Commit struct {
+			Message string `json:"message"`
+		} `json:"commit"`
+	}
+
+	if err := json.Unmarshal(body, &data); err != nil {
+		return "", err
+	}
+
+	return data.Commit.Message, nil
 }
 
 func ValidateToken(token string) (string, error) {
