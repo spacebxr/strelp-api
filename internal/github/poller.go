@@ -38,7 +38,7 @@ type ghUser struct {
 }
 
 func (p *Poller) Start(ctx context.Context) {
-	ticker := time.NewTicker(5 * time.Minute)
+	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
 
 	p.pollAll(ctx)
@@ -97,14 +97,19 @@ func (p *Poller) pollUser(ctx context.Context, userID, ghUsername, token string,
 	body, _ := io.ReadAll(resp.Body)
 	var events []ghEvent
 	if err := json.Unmarshal(body, &events); err != nil {
+		log.Printf("[GitHub] Failed to unmarshal events for %s: %v", ghUsername, err)
 		return
 	}
+
+	log.Printf("[GitHub] Fetched %d events for %s", len(events), ghUsername)
 
 	presence, err := p.DB.GetPresence(ctx, userID)
 	if err != nil {
+		log.Printf("[GitHub] Failed to fetch presence for %s: %v", userID, err)
 		return
 	}
 
+	foundPush := false
 	for _, event := range events {
 		if event.Type != "PushEvent" {
 			continue
@@ -116,6 +121,7 @@ func (p *Poller) pollUser(ctx context.Context, userID, ghUsername, token string,
 			continue
 		}
 
+		foundPush = true
 		ghData := &models.GitHub{
 			Username:  ghUsername,
 			Repo:      event.Repo.Name,
@@ -131,8 +137,14 @@ func (p *Poller) pollUser(ctx context.Context, userID, ghUsername, token string,
 		presence.GitHub = ghData
 		if err := p.DB.SetPresence(ctx, userID, presence); err != nil {
 			log.Printf("[GitHub] Failed to save presence for %s: %v", userID, err)
+		} else {
+			log.Printf("[GitHub] Success: Updated presence with PushEvent for %s", ghUsername)
 		}
 		break
+	}
+
+	if !foundPush {
+		log.Printf("[GitHub] No qualifying PushEvent found in recent events for %s", ghUsername)
 	}
 }
 
