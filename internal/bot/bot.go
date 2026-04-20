@@ -50,24 +50,12 @@ func (b *Bot) Start() error {
 	return b.Session.Open()
 }
 
-func (b *Bot) onPresenceUpdate(s *discordgo.Session, p *discordgo.PresenceUpdate) {
-	if p.GuildID != b.AllowedGuildID {
-		return
-	}
 
-	ctx := context.Background()
-
-	existing, err := b.DB.GetPresence(ctx, p.User.ID)
-	if err != nil {
-		return
-	}
-
-	log.Printf("[Bot] Updating presence for user: %s", p.User.Username)
-
-	activities := make([]models.Activity, len(p.Activities))
+func buildActivities(discordActivities []*discordgo.Activity) ([]models.Activity, *models.Spotify) {
+	activities := make([]models.Activity, len(discordActivities))
 	var spotify *models.Spotify
 
-	for i, a := range p.Activities {
+	for i, a := range discordActivities {
 		startTime := a.Timestamps.StartTimestamp / 1000
 		if startTime == 0 && !a.CreatedAt.IsZero() {
 			startTime = a.CreatedAt.Unix()
@@ -83,10 +71,12 @@ func (b *Bot) onPresenceUpdate(s *discordgo.Session, p *discordgo.PresenceUpdate
 		activities[i].Timestamps.Start = startTime
 
 		if a.Name == "Spotify" {
-			startTime := a.Timestamps.StartTimestamp / 1000
-			endTime := a.Timestamps.EndTimestamp / 1000
+			sStart := a.Timestamps.StartTimestamp / 1000
+			sEnd := a.Timestamps.EndTimestamp / 1000
 
 			albumArt := ""
+			var albumName string
+			albumName = a.Assets.LargeText
 			if len(a.Assets.LargeImageID) > 8 {
 				albumArt = fmt.Sprintf("https://i.scdn.co/image/%s", a.Assets.LargeImageID[8:])
 			}
@@ -94,13 +84,32 @@ func (b *Bot) onPresenceUpdate(s *discordgo.Session, p *discordgo.PresenceUpdate
 			spotify = &models.Spotify{
 				Track:    a.Details,
 				Artist:   a.State,
-				Album:    a.Assets.LargeText,
+				Album:    albumName,
 				AlbumArt: albumArt,
-				Start:    startTime,
-				End:      endTime,
+				Start:    sStart,
+				End:      sEnd,
 			}
 		}
 	}
+
+	return activities, spotify
+}
+
+func (b *Bot) onPresenceUpdate(s *discordgo.Session, p *discordgo.PresenceUpdate) {
+	if p.GuildID != b.AllowedGuildID {
+		return
+	}
+
+	ctx := context.Background()
+
+	existing, err := b.DB.GetPresence(ctx, p.User.ID)
+	if err != nil {
+		return
+	}
+
+	log.Printf("[Bot] Updating presence for user: %s", p.User.Username)
+
+	activities, spotify := buildActivities(p.Activities)
 
 	userObj := p.User
 	if cachedMember, err := s.State.Member(p.GuildID, p.User.ID); err == nil {
@@ -647,6 +656,10 @@ func (b *Bot) onInteractionCreate(s *discordgo.Session, i *discordgo.Interaction
 					presence.Devices.Desktop = p.ClientStatus.Desktop != ""
 					presence.Devices.Mobile = p.ClientStatus.Mobile != ""
 					presence.Devices.Web = p.ClientStatus.Web != ""
+
+					acts, spot := buildActivities(p.Activities)
+					presence.Activities = acts
+					presence.Spotify = spot
 				}
 
 				if err := b.DB.SetPresence(ctx, userID, presence); err != nil {
