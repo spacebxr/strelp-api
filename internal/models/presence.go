@@ -39,7 +39,6 @@ type Activity struct {
 	Emoji     string `json:"emoji,omitempty"`
 	CreatedAt int64  `json:"created_at"`
 
-	// 🔥 ADD THESE
 	Duration   int64 `json:"duration,omitempty"`
 	Timestamps struct {
 		Start int64 `json:"start"`
