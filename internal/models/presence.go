@@ -43,6 +43,11 @@ type Activity struct {
 	Timestamps struct {
 		Start int64 `json:"start"`
 	} `json:"timestamps"`
+
+	LargeImage string `json:"large_image,omitempty"`
+	SmallImage string `json:"small_image,omitempty"`
+	LargeText  string `json:"large_text,omitempty"`
+	SmallText  string `json:"small_text,omitempty"`
 }
 
 type Presence struct {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
@@ -51,6 +52,22 @@ func (b *Bot) Start() error {
 }
 
 
+func resolveAssetURL(appID, imageKey string) string {
+	if imageKey == "" {
+		return ""
+	}
+	if strings.HasPrefix(imageKey, "spotify:") {
+		return fmt.Sprintf("https://i.scdn.co/image/%s", imageKey[8:])
+	}
+	if strings.HasPrefix(imageKey, "mp:") {
+		return ""
+	}
+	if appID == "" {
+		return ""
+	}
+	return fmt.Sprintf("https://cdn.discordapp.com/app-assets/%s/%s.png", appID, imageKey)
+}
+
 func buildActivities(discordActivities []*discordgo.Activity) ([]models.Activity, *models.Spotify) {
 	activities := make([]models.Activity, len(discordActivities))
 	var spotify *models.Spotify
@@ -69,6 +86,10 @@ func buildActivities(discordActivities []*discordgo.Activity) ([]models.Activity
 			CreatedAt: startTime,
 		}
 		activities[i].Timestamps.Start = startTime
+		activities[i].LargeImage = resolveAssetURL(a.ApplicationID, a.Assets.LargeImageID)
+		activities[i].SmallImage = resolveAssetURL(a.ApplicationID, a.Assets.SmallImageID)
+		activities[i].LargeText = a.Assets.LargeText
+		activities[i].SmallText = a.Assets.SmallText
 
 		if a.Name == "Spotify" {
 			sStart := a.Timestamps.StartTimestamp / 1000
