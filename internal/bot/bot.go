@@ -69,6 +69,9 @@ func (b *Bot) onPresenceUpdate(s *discordgo.Session, p *discordgo.PresenceUpdate
 
 	for i, a := range p.Activities {
 		startTime := a.Timestamps.StartTimestamp / 1000
+		if startTime == 0 && !a.CreatedAt.IsZero() {
+			startTime = a.CreatedAt.Unix()
+		}
 
 		activities[i] = models.Activity{
 			Name:      a.Name,
