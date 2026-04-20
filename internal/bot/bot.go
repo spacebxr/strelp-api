@@ -90,6 +90,7 @@ func buildActivities(discordActivities []*discordgo.Activity) ([]models.Activity
 		activities[i].SmallImage = resolveAssetURL(a.ApplicationID, a.Assets.SmallImageID)
 		activities[i].LargeText = a.Assets.LargeText
 		activities[i].SmallText = a.Assets.SmallText
+		log.Printf("[Bot] Activity %q appID=%q largeImageID=%q smallImageID=%q largeText=%q", a.Name, a.ApplicationID, a.Assets.LargeImageID, a.Assets.SmallImageID, a.Assets.LargeText)
 
 		if a.Name == "Spotify" {
 			sStart := a.Timestamps.StartTimestamp / 1000
