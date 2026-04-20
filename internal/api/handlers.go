@@ -4,7 +4,10 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"time"
+
 	"github.com/go-chi/chi/v5"
+	"github.com/spacebxr/strelp-api/internal/discord"
 )
 
 func (s *Server) handleGetPresence(w http.ResponseWriter, r *http.Request) {
@@ -20,6 +23,31 @@ func (s *Server) handleGetPresence(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	profile, err := discord.FetchProfile(userID)
+	if err == nil && profile != nil {
+
+		var badges []string
+		if profile.Badges != nil {
+			for _, b := range profile.Badges {
+				badges = append(badges, b.ID)
+			}
+		}
+
+		presence.Badges = badges
+		presence.Nameplate = profile.User.Collectibles.Nameplate.Asset
+		presence.ClanTag = profile.User.Clan.Tag
+	}
+
+	if len(presence.Activities) > 5 {
+		presence.Activities = presence.Activities[len(presence.Activities)-5:]
+	}
+
+	for i := range presence.Activities {
+		start := presence.Activities[i].Timestamps.Start
+		if start != 0 {
+			presence.Activities[i].Duration = time.Now().Unix() - start
+		}
+	}
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(presence); err != nil {
 		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
