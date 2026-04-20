@@ -15,7 +15,7 @@ The poller needs a token to read your GitHub activity on your behalf.
 2. Give it an easily identifiable name.
 3. Set an expiration that suits you for your testing period.
 4. Under the Scopes section, tick `repo` (if you want to track private repositories) and `read:user` (to verify your username). If you only want to track public repos, `public_repo` is enough.
-5. Generate the token and copy it immediately, as GitHub will not show it again.
+5. Generate the token and copy it **immediately**, as GitHub will not show it again.
 
 ### Fine-Grained PAT
 
