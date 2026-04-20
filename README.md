@@ -52,5 +52,5 @@ Take a look at the `/docs` directory in this repository to read about our privac
 
 ---
 
-Built by spacebxr, sachfax, and other contributors. 
+Built by spacebxr, sachfax, cardinal and other contributors. 
 If this project helped you, starring it on GitHub is greatly appreciated.
