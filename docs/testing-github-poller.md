@@ -1,6 +1,7 @@
 # Testing the GitHub Poller
 
 This guide explains how to get a GitHub Personal Access Token and verify that the GitHub polling system is detecting your commits correctly. It is written for contributors mapping out their development environments for the first time.
+or if you wanna try it out, thats fine.
 
 ---
 
