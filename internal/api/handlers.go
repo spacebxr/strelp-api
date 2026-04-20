@@ -2,9 +2,8 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
-
-	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/spacebxr/strelp-api/internal/discord"
@@ -31,8 +30,13 @@ func (s *Server) handleGetPresence(w http.ResponseWriter, r *http.Request) {
 
 		if profile.Badges != nil {
 			for _, b := range profile.Badges {
+				iconKey := b.Icon
+				if iconKey == "" {
+					iconKey = b.ID
+				}
 				badges = append(badges, models.Badge{
-					ID: b.ID,
+					ID:      b.ID,
+					IconURL: fmt.Sprintf("https://cdn.discordapp.com/badge-icons/%s.png", iconKey),
 				})
 			}
 		}
@@ -41,16 +45,7 @@ func (s *Server) handleGetPresence(w http.ResponseWriter, r *http.Request) {
 		presence.ClanTag = profile.User.Clan.Tag
 	}
 
-	if len(presence.Activities) > 5 {
-		presence.Activities = presence.Activities[len(presence.Activities)-5:]
-	}
-
-	for i := range presence.Activities {
-		start := presence.Activities[i].Timestamps.Start
-		if start != 0 {
-			presence.Activities[i].Duration = time.Now().Unix() - start
-		}
-	}
+	applyPresenceMeta(presence)
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(presence); err != nil {
 		http.Error(w, "Failed to encode response", http.StatusInternalServerError)

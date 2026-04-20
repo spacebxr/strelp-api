@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/spacebxr/strelp-api/internal/crypto"
@@ -56,7 +57,7 @@ func (b *Bot) onPresenceUpdate(s *discordgo.Session, p *discordgo.PresenceUpdate
 
 	ctx := context.Background()
 
-	_, err := b.DB.GetPresence(ctx, p.User.ID)
+	existing, err := b.DB.GetPresence(ctx, p.User.ID)
 	if err != nil {
 		return
 	}
@@ -76,6 +77,7 @@ func (b *Bot) onPresenceUpdate(s *discordgo.Session, p *discordgo.PresenceUpdate
 			Details:   a.Details,
 			CreatedAt: startTime,
 		}
+		activities[i].Timestamps.Start = startTime
 
 		if a.Name == "Spotify" {
 			startTime := a.Timestamps.StartTimestamp / 1000
@@ -124,6 +126,30 @@ func (b *Bot) onPresenceUpdate(s *discordgo.Session, p *discordgo.PresenceUpdate
 		}
 	}
 
+	now := time.Now().Unix()
+	history := existing.History
+	for _, old := range existing.Activities {
+		if old.Name == "Spotify" {
+			continue
+		}
+		stillActive := false
+		for _, newAct := range p.Activities {
+			if newAct.Name == old.Name {
+				stillActive = true
+				break
+			}
+		}
+		if !stillActive {
+			if old.Timestamps.Start != 0 {
+				old.Duration = now - old.Timestamps.Start
+			}
+			history = append([]models.Activity{old}, history...)
+		}
+	}
+	if len(history) > 5 {
+		history = history[:5]
+	}
+
 	presence := &models.Presence{
 		User: models.User{
 			ID:         userObj.ID,
@@ -137,6 +163,8 @@ func (b *Bot) onPresenceUpdate(s *discordgo.Session, p *discordgo.PresenceUpdate
 		Badges:        badges,
 		Nameplate:     nameplate,
 		ClanTag:       clanTag,
+		GitHub:        existing.GitHub,
+		History:       history,
 	}
 
 	presence.Devices.Desktop = p.ClientStatus.Desktop != ""

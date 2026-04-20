@@ -49,6 +49,7 @@ type Presence struct {
 	User          User       `json:"user"`
 	DiscordStatus string     `json:"discord_status"`
 	Activities    []Activity `json:"activities"`
+	History       []Activity `json:"history,omitempty"`
 	Spotify       *Spotify   `json:"spotify,omitempty"`
 	GitHub        *GitHub    `json:"github,omitempty"`
 

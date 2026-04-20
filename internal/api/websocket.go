@@ -1,20 +1,23 @@
 package api
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
+	"net/url"
+	"time"
 
-	"encoding/json"
 	"fmt"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/gorilla/websocket"
+	"github.com/spacebxr/strelp-api/internal/models"
 )
 
 func fetchLyrics(song, artist string) string {
-	url := fmt.Sprintf("https://api.lyrics.ovh/v1/%s/%s", artist, song)
+	u := fmt.Sprintf("https://api.lyrics.ovh/v1/%s/%s", url.PathEscape(artist), url.PathEscape(song))
 
-	resp, err := http.Get(url)
+	resp, err := http.Get(u)
 	if err != nil {
 		return ""
 	}
@@ -26,6 +29,20 @@ func fetchLyrics(song, artist string) string {
 
 	json.NewDecoder(resp.Body).Decode(&data)
 	return data.Lyrics
+}
+
+func applyPresenceMeta(presence *models.Presence) {
+	if len(presence.Activities) > 5 {
+		presence.Activities = presence.Activities[len(presence.Activities)-5:]
+	}
+
+	now := time.Now().Unix()
+	for i := range presence.Activities {
+		start := presence.Activities[i].Timestamps.Start
+		if start != 0 {
+			presence.Activities[i].Duration = now - start
+		}
+	}
 }
 
 var upgrader = websocket.Upgrader{
@@ -54,6 +71,7 @@ func (s *Server) handleStreamPresence(w http.ResponseWriter, r *http.Request) {
 
 	presence, err := s.DB.GetPresence(r.Context(), userID)
 	if err == nil {
+		applyPresenceMeta(presence)
 		if err := conn.WriteJSON(presence); err != nil {
 			log.Printf("[API] Error sending initial state: %v", err)
 			return
@@ -95,13 +113,12 @@ func (s *Server) handleStreamPresence(w http.ResponseWriter, r *http.Request) {
 		if notification.Payload == userID {
 			presence, err := s.DB.GetPresence(r.Context(), userID)
 			if err == nil {
-
+				applyPresenceMeta(presence)
 				if err := conn.WriteJSON(presence); err != nil {
 					log.Printf("[API] Error streaming update: %v", err)
 					return
 				}
 
-				// 🔥 ADD THIS
 				for _, activity := range presence.Activities {
 					if activity.Name == "Spotify" {
 						lyrics := fetchLyrics(activity.Details, activity.State)
