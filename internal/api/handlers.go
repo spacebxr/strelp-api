@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/spacebxr/strelp-api/internal/discord"
+	"github.com/spacebxr/strelp-api/internal/models"
 )
 
 func (s *Server) handleGetPresence(w http.ResponseWriter, r *http.Request) {
@@ -26,13 +27,15 @@ func (s *Server) handleGetPresence(w http.ResponseWriter, r *http.Request) {
 	profile, err := discord.FetchProfile(userID)
 	if err == nil && profile != nil {
 
-		var badges []string
+		var badges []models.Badge
+
 		if profile.Badges != nil {
 			for _, b := range profile.Badges {
-				badges = append(badges, b.ID)
+				badges = append(badges, models.Badge{
+					ID: b.ID,
+				})
 			}
 		}
-
 		presence.Badges = badges
 		presence.Nameplate = profile.User.Collectibles.Nameplate.Asset
 		presence.ClanTag = profile.User.Clan.Tag

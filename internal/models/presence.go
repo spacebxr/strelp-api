@@ -1,5 +1,10 @@
 package models
 
+type Badge struct {
+	ID      string `json:"id"`
+	IconURL string `json:"icon_url"`
+}
+
 type User struct {
 	ID         string `json:"id"`
 	Username   string `json:"username"`
@@ -48,9 +53,9 @@ type Presence struct {
 	Spotify       *Spotify   `json:"spotify,omitempty"`
 	GitHub        *GitHub    `json:"github,omitempty"`
 
-	Badges    []string `json:"badges,omitempty"`
-	Nameplate string   `json:"nameplate,omitempty"`
-	ClanTag   string   `json:"clan_tag,omitempty"`
+	Badges    []Badge `json:"badges,omitempty"`
+	Nameplate string  `json:"nameplate,omitempty"`
+	ClanTag   string  `json:"clan_tag,omitempty"`
 
 	Devices struct {
 		Desktop bool `json:"desktop"`

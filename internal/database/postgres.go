@@ -154,3 +154,22 @@ func (db *Database) CountAllGitHubUsers(ctx context.Context) (int, error) {
 	err := db.pool.QueryRow(ctx, "SELECT COUNT(*) FROM github_settings").Scan(&count)
 	return count, err
 }
+
+func (db *Database) GetAllTrackedUserIDs(ctx context.Context) ([]string, error) {
+	query := "SELECT user_id FROM presences"
+	rows, err := db.pool.Query(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			continue
+		}
+		ids = append(ids, id)
+	}
+	return ids, nil
+}

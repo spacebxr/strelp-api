@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/joho/godotenv"
@@ -45,7 +46,13 @@ func main() {
 		log.Fatal("GUILD_ID is required to restrict the bot to a single server")
 	}
 
-	b, err := bot.NewBot(token, db, encryptionKey, guildID)
+	syncRolesStr := os.Getenv("SYNC_ROLES")
+	var syncRoles []string
+	if syncRolesStr != "" {
+		syncRoles = strings.Split(syncRolesStr, ",")
+	}
+
+	b, err := bot.NewBot(token, db, encryptionKey, guildID, syncRoles)
 	if err != nil {
 		log.Fatalf("Failed to initialize bot: %v", err)
 	}
