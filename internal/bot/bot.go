@@ -693,7 +693,7 @@ func (b *Bot) onInteractionCreate(s *discordgo.Session, i *discordgo.Interaction
 			emptyStr := ""
 			successEmbed := &discordgo.MessageEmbed{
 				Title:       "Sync Complete",
-				Description: fmt.Sprintf("Successfully synced **%d** tracked users to the latest version.\n\nBadges, nameplates, clan tags, and profile data have all been refreshed.", count),
+				Description: fmt.Sprintf("Successfully synced **%d** tracked users to the latest version.\n\nProfile data, badges, nameplates, clan tags, activities, and status have all been refreshed.", count),
 				Color:       0x57F287,
 			}
 			s.InteractionResponseEdit(i.Interaction, &discordgo.WebhookEdit{
