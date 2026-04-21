@@ -741,7 +741,7 @@ func (b *Bot) onInteractionCreate(s *discordgo.Session, i *discordgo.Interaction
 				},
 				{
 					Name:  "GitHub Integration",
-					Value: "Run `/git token:<PAT> visibility:<choice>` to link your GitHub account. Your latest commit will appear in the `github` field, refreshed every 5 minutes.\n\n**Creating a PAT:** GitHub → Settings → Developer settings → Personal access tokens. For Fine-Grained PATs grant Read-only access to Contents and Metadata. For Classic PATs enable `repo` and `read:user` scopes.\n\nYour token is encrypted with AES-256-GCM before storage and is never returned by the API. Run `/gitstop` to unlink at any time.",
+					Value: "Run `/git token:<PAT> visibility:<choice>` to link your GitHub account. Your latest commit will appear in the `github` field, refreshed every 5 minutes.\n\n**Creating a PAT:** GitHub → Settings → Developer settings → Personal access tokens. For `Fine-Grained PATs` grant `Read-only` access to `Contents and Metadata`. For `Classic PATs` enable `repo` and `read:user` scopes.\n\nYour token is encrypted with AES-256-GCM before storage and is never returned by the API. Run `/gitstop` to unlink at any time.",
 				},
 				{
 					Name:  "Available Commands",
@@ -763,4 +763,3 @@ func (b *Bot) onInteractionCreate(s *discordgo.Session, i *discordgo.Interaction
 		})
 	}
 }
-
