@@ -51,7 +51,6 @@ func (b *Bot) Start() error {
 	return b.Session.Open()
 }
 
-
 func resolveAssetURL(appID, imageKey string) string {
 	if imageKey == "" {
 		return ""
@@ -264,6 +263,10 @@ func (b *Bot) RegisterCommands(guildID string) error {
 			Name:        "sync",
 			Description: "Sync all tracked users presence to the latest version (Staff Only)",
 		},
+		{
+			Name:        "help",
+			Description: "Learn everything about Strelp — setup, endpoints, WebSocket, GitHub integration, and more",
+		},
 	}
 
 	_, err := b.Session.ApplicationCommandBulkOverwrite(b.Session.State.User.ID, guildID, commands)
@@ -341,7 +344,7 @@ func (b *Bot) onInteractionCreate(s *discordgo.Session, i *discordgo.Interaction
 					Embeds: []*discordgo.MessageEmbed{
 						{
 							Title:       "Something went wrong",
-							Description: "Failed to start tracking your presence. Please try again in a moment. If this keeps happening, reach out to a server admin.",
+							Description: "Failed to start tracking your presence. Please try again in a moment. If this keeps happening, reach out to a developer or a contributor.",
 							Color:       0xED4245,
 						},
 					},
@@ -701,5 +704,63 @@ func (b *Bot) onInteractionCreate(s *discordgo.Session, i *discordgo.Interaction
 				Embeds:  &[]*discordgo.MessageEmbed{successEmbed},
 			})
 		}()
+	case "help":
+		apiDomain := os.Getenv("RAILWAY_PUBLIC_DOMAIN")
+		if apiDomain == "" {
+			apiDomain = "strelp-api-production.up.railway.app"
+		}
+
+		helpEmbed := &discordgo.MessageEmbed{
+			Title:       "Strelp API — Complete Guide",
+			Description: fmt.Sprintf("Strelp exposes your Discord presence as a live JSON API and WebSocket stream that anyone can consume from a website, app, or tool.\n\nBase URL: `https://%s`", apiDomain),
+			Color:       0x5865F2,
+			Fields: []*discordgo.MessageEmbedField{
+				{
+					Name:  "Step 1 — Start Tracking",
+					Value: "Run `/start` to register yourself. This creates your presence record and generates your personal API endpoint. Nothing is exposed until you run this command.",
+				},
+				{
+					Name:  "Getting Your Access Key",
+					Value: fmt.Sprintf("No tokens or sign-ups needed. Your Discord User ID is your key. After running `/start`, your endpoint is:\n`https://%s/v1/presence/{your_discord_id}`\n\nTo find your User ID: enable Developer Mode in Discord settings, right-click your name, then select Copy User ID.", apiDomain),
+				},
+				{
+					Name:  "REST Endpoint — Fetch Presence",
+					Value: fmt.Sprintf("```js\nfetch('https://%s/v1/presence/{your_discord_id}')\n  .then(res => res.json())\n  .then(data => {\n    console.log(data.discord_status);\n    console.log(data.user.global_name);\n    console.log(data.activities);\n    console.log(data.spotify?.track);\n  });\n```", apiDomain),
+				},
+				{
+					Name:  "WebSocket — Real-Time Stream",
+					Value: fmt.Sprintf("Connect to `wss://%s/v1/presence/{your_discord_id}/ws` for instant push updates.\n\nThe server sends the full presence object immediately on connect, then pushes a new payload every time your status or activity changes. No messages need to be sent to the server.", apiDomain),
+				},
+				{
+					Name:  "WebSocket Reconnection Pattern",
+					Value: fmt.Sprintf("```js\nfunction connect() {\n  const ws = new WebSocket('wss://%s/v1/presence/{id}/ws');\n  ws.onmessage = e => update(JSON.parse(e.data));\n  ws.onclose = () => setTimeout(connect, 3000);\n}\nconnect();\n```\nRun `/ws` for a full annotated example.", apiDomain),
+				},
+				{
+					Name:  "Response Fields Reference",
+					Value: "`discord_status` — online / idle / dnd / offline\n`user` — id, username, global_name, avatar URL\n`activities` — current games or apps with images and timestamps\n`spotify` — track, artist, album, album art, start/end timestamps\n`github` — last commit message, repo, URL, privacy flag, timestamp\n`badges` — id and icon_url for each Discord badge\n`devices` — desktop, mobile, web (booleans)\n`nameplate` — active Discord nameplate asset\n`clan_tag` — Discord clan tag if set\n`history` — last 5 ended activities with durations",
+				},
+				{
+					Name:  "GitHub Integration",
+					Value: "Run `/git token:<PAT> visibility:<choice>` to link your GitHub account. Your latest commit will appear in the `github` field, refreshed every 5 minutes.\n\n**Creating a PAT:** GitHub → Settings → Developer settings → Personal access tokens. For Fine-Grained PATs grant Read-only access to Contents and Metadata. For Classic PATs enable `repo` and `read:user` scopes.\n\nYour token is encrypted with AES-256-GCM before storage and is never returned by the API. Run `/gitstop` to unlink at any time.",
+				},
+				{
+					Name:  "Available Commands",
+					Value: "`/start` — Begin tracking your presence\n`/stop` — Delete your presence data\n`/ws` — Full WebSocket code example for your user ID\n`/git` — Link your GitHub account\n`/gitstop` — Unlink GitHub and remove your token\n`/sync` — Staff only: refresh all tracked users\n`/help` — This guide",
+				},
+				{
+					Name:  "Common Issues",
+					Value: "**404 Not Found** — Run `/start` first. Your endpoint only exists while tracking is active.\n**Stale presence** — Change your Discord status or activity; updates are pushed by Discord in real time.\n**WebSocket closes instantly** — Confirm the URL uses `wss://` and that you have run `/start`.\n**No Spotify data** — Spotify must be active and linked to Discord via User Settings → Connections.\n**No GitHub data** — Allow up to 5 minutes after running `/git` for the first poll to complete.",
+				},
+			},
+		}
+
+		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Embeds: []*discordgo.MessageEmbed{helpEmbed},
+				Flags:  discordgo.MessageFlagsEphemeral,
+			},
+		})
 	}
 }
+
