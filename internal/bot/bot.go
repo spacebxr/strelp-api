@@ -175,7 +175,13 @@ func (b *Bot) onPresenceUpdate(s *discordgo.Session, p *discordgo.PresenceUpdate
 			if old.Timestamps.Start != 0 {
 				old.Duration = now - old.Timestamps.Start
 			}
-			history = append([]models.Activity{old}, history...)
+			var newHistory []models.Activity
+			for _, h := range history {
+				if h.Name != old.Name {
+					newHistory = append(newHistory, h)
+				}
+			}
+			history = append([]models.Activity{old}, newHistory...)
 		}
 	}
 	if len(history) > 5 {
