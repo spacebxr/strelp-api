@@ -54,3 +54,4 @@ Take a look at the `/docs` directory in this repository to read about our privac
 
 Built by spacebxr, sachfax, cardinal and other contributors. 
 If this project helped you, starring it on GitHub is greatly appreciated.
+For Support join the [Discord Server](https://discord.gg/92zur6zRmR)
