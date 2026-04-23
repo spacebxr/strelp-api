@@ -240,23 +240,43 @@ func (b *Bot) RegisterCommands(guildID string) error {
 		},
 		{
 			Name:        "git",
-			Description: "Connect your GitHub account to show your latest commits in your presence",
+			Description: "Manage your GitHub account connection",
 			Options: []*discordgo.ApplicationCommandOption{
 				{
-					Type:        discordgo.ApplicationCommandOptionString,
-					Name:        "token",
-					Description: "Your GitHub Personal Access Token (keep this private)",
-					Required:    true,
+					Type:        discordgo.ApplicationCommandOptionSubCommand,
+					Name:        "connect",
+					Description: "Connect your GitHub account to show your latest commits in your presence",
+					Options: []*discordgo.ApplicationCommandOption{
+						{
+							Type:        discordgo.ApplicationCommandOptionString,
+							Name:        "token",
+							Description: "Your GitHub Personal Access Token (keep this private)",
+							Required:    true,
+						},
+						{
+							Type:        discordgo.ApplicationCommandOptionString,
+							Name:        "visibility",
+							Description: "Which repos to show in your presence",
+							Required:    true,
+							Choices: []*discordgo.ApplicationCommandOptionChoice{
+								{Name: "Public repos only", Value: "public"},
+								{Name: "Private repos only", Value: "private"},
+								{Name: "Both public and private", Value: "both"},
+							},
+						},
+					},
 				},
 				{
-					Type:        discordgo.ApplicationCommandOptionString,
-					Name:        "visibility",
-					Description: "Which repos to show in your presence",
-					Required:    true,
-					Choices: []*discordgo.ApplicationCommandOptionChoice{
-						{Name: "Public repos only", Value: "public"},
-						{Name: "Private repos only", Value: "private"},
-						{Name: "Both public and private", Value: "both"},
+					Type:        discordgo.ApplicationCommandOptionSubCommand,
+					Name:        "update",
+					Description: "Replace your stored GitHub token without changing your visibility setting",
+					Options: []*discordgo.ApplicationCommandOption{
+						{
+							Type:        discordgo.ApplicationCommandOptionString,
+							Name:        "token",
+							Description: "Your new GitHub Personal Access Token (keep this private)",
+							Required:    true,
+						},
 					},
 				},
 			},
@@ -448,31 +468,115 @@ func (b *Bot) onInteractionCreate(s *discordgo.Session, i *discordgo.Interaction
 		})
 
 	case "git":
-		opts := data.Options
-		var rawToken, visibility string
-		for _, o := range opts {
-			switch o.Name {
-			case "token":
-				rawToken = o.StringValue()
-			case "visibility":
-				visibility = o.StringValue()
-			}
+		if len(data.Options) == 0 {
+			return
 		}
+		subCmd := data.Options[0]
 
-		ghUsername, err := github.ValidateToken(rawToken)
-		if err != nil {
+		switch subCmd.Name {
+		case "connect":
+			var rawToken, visibility string
+			for _, o := range subCmd.Options {
+				switch o.Name {
+				case "token":
+					rawToken = o.StringValue()
+				case "visibility":
+					visibility = o.StringValue()
+				}
+			}
+
+			ghUsername, err := github.ValidateToken(rawToken)
+			if err != nil {
+				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+					Type: discordgo.InteractionResponseChannelMessageWithSource,
+					Data: &discordgo.InteractionResponseData{
+						Embeds: []*discordgo.MessageEmbed{
+							{
+								Title:       "Invalid GitHub Token",
+								Description: fmt.Sprintf("Could not authenticate with the token you provided.\n\n**Error:** %v", err),
+								Color:       0xED4245,
+								Fields: []*discordgo.MessageEmbedField{
+									{
+										Name:  "How to create a token",
+										Value: "Go to **GitHub → Settings → Developer settings → Personal access tokens** and generate a new token. For Classic PATs, enable the `repo` and `read:user` scopes. For Fine-Grained PATs, grant Read-only access to Contents and Metadata.",
+									},
+								},
+							},
+						},
+						Flags: discordgo.MessageFlagsEphemeral,
+					},
+				})
+				return
+			}
+
+			encryptedToken, err := crypto.Encrypt(rawToken, b.EncryptionKey)
+			if err != nil {
+				log.Printf("[Bot] Failed to encrypt GitHub token for %s: %v", user.ID, err)
+				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+					Type: discordgo.InteractionResponseChannelMessageWithSource,
+					Data: &discordgo.InteractionResponseData{
+						Embeds: []*discordgo.MessageEmbed{
+							{
+								Title:       "Something went wrong",
+								Description: "An internal error occurred while securing your token. Please try again in a moment.",
+								Color:       0xED4245,
+							},
+						},
+						Flags: discordgo.MessageFlagsEphemeral,
+					},
+				})
+				return
+			}
+
+			showPrivate := visibility == "private" || visibility == "both"
+			showPublic := visibility == "public" || visibility == "both"
+
+			settings := &database.GitHubSettings{
+				UserID:      user.ID,
+				AccessToken: encryptedToken,
+				Username:    ghUsername,
+				ShowPrivate: showPrivate,
+				ShowPublic:  showPublic,
+			}
+
+			if err := b.DB.SaveGitHubSettings(ctx, settings); err != nil {
+				log.Printf("[Bot] Failed to save GitHub settings for %s: %v", user.ID, err)
+				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+					Type: discordgo.InteractionResponseChannelMessageWithSource,
+					Data: &discordgo.InteractionResponseData{
+						Embeds: []*discordgo.MessageEmbed{
+							{
+								Title:       "Failed to save settings",
+								Description: "Could not save your GitHub settings to the database. Please try again. If the issue persists, contact a server admin.",
+								Color:       0xED4245,
+							},
+						},
+						Flags: discordgo.MessageFlagsEphemeral,
+					},
+				})
+				return
+			}
+
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
 				Data: &discordgo.InteractionResponseData{
 					Embeds: []*discordgo.MessageEmbed{
 						{
-							Title:       "Invalid GitHub Token",
-							Description: fmt.Sprintf("Could not authenticate with the token you provided.\n\n**Error:** %v", err),
-							Color:       0xED4245,
+							Title:       "GitHub Connected",
+							Description: fmt.Sprintf("Your GitHub account **%s** is now linked. Commit data will appear in your API presence within 5 minutes and will update every 5 minutes after that.", ghUsername),
+							Color:       0x238636,
 							Fields: []*discordgo.MessageEmbedField{
 								{
-									Name:  "How to create a token",
-									Value: "Go to **GitHub → Settings → Developer settings → Personal access tokens** and generate a new token. For Classic PATs, enable the `repo` and `read:user` scopes. For Fine-Grained PATs, grant Read-only access to Contents and Metadata.",
+									Name:  "Visibility Setting",
+									Value: fmt.Sprintf("Currently set to show **%s** repositories. You can change this at any time by running `/git connect` again with a different visibility option.", visibility),
+								},
+								{
+									Name:  "What appears in the API",
+									Value: "The `github` field in your presence will contain:\n`username` — your GitHub username\n`last_commit` — the message of your most recent commit\n`repo` — the repository it was pushed to\n`url` — a direct link to the commit\n`private` — whether the repo is private\n`updated_at` — Unix timestamp of the commit",
+								},
+								{
+									Name:  "Security",
+									Value: "Your token is encrypted with AES-256-GCM before being stored. It is never logged, cached in plaintext, or returned by the API. Run `/gitstop` at any time to revoke access and purge your data.",
 								},
 							},
 						},
@@ -480,84 +584,117 @@ func (b *Bot) onInteractionCreate(s *discordgo.Session, i *discordgo.Interaction
 					Flags: discordgo.MessageFlagsEphemeral,
 				},
 			})
-			return
-		}
 
-		encryptedToken, err := crypto.Encrypt(rawToken, b.EncryptionKey)
-		if err != nil {
-			log.Printf("[Bot] Failed to encrypt GitHub token for %s: %v", user.ID, err)
+		case "update":
+			var rawToken string
+			for _, o := range subCmd.Options {
+				if o.Name == "token" {
+					rawToken = o.StringValue()
+				}
+			}
+
+			existing, err := b.DB.GetGitHubSettings(ctx, user.ID)
+			if err != nil || existing == nil {
+				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+					Type: discordgo.InteractionResponseChannelMessageWithSource,
+					Data: &discordgo.InteractionResponseData{
+						Embeds: []*discordgo.MessageEmbed{
+							{
+								Title:       "No GitHub Account Linked",
+								Description: "You do not have a GitHub account connected. Run `/git connect` first to link your account.",
+								Color:       0xED4245,
+							},
+						},
+						Flags: discordgo.MessageFlagsEphemeral,
+					},
+				})
+				return
+			}
+
+			ghUsername, err := github.ValidateToken(rawToken)
+			if err != nil {
+				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+					Type: discordgo.InteractionResponseChannelMessageWithSource,
+					Data: &discordgo.InteractionResponseData{
+						Embeds: []*discordgo.MessageEmbed{
+							{
+								Title:       "Invalid GitHub Token",
+								Description: fmt.Sprintf("Could not authenticate with the token you provided.\n\n**Error:** %v", err),
+								Color:       0xED4245,
+								Fields: []*discordgo.MessageEmbedField{
+									{
+										Name:  "How to create a token",
+										Value: "Go to **GitHub → Settings → Developer settings → Personal access tokens** and generate a new token. For Classic PATs, enable the `repo` and `read:user` scopes. For Fine-Grained PATs, grant Read-only access to Contents and Metadata.",
+									},
+								},
+							},
+						},
+						Flags: discordgo.MessageFlagsEphemeral,
+					},
+				})
+				return
+			}
+
+			encryptedToken, err := crypto.Encrypt(rawToken, b.EncryptionKey)
+			if err != nil {
+				log.Printf("[Bot] Failed to encrypt GitHub token for %s: %v", user.ID, err)
+				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+					Type: discordgo.InteractionResponseChannelMessageWithSource,
+					Data: &discordgo.InteractionResponseData{
+						Embeds: []*discordgo.MessageEmbed{
+							{
+								Title:       "Something went wrong",
+								Description: "An internal error occurred while securing your token. Please try again in a moment.",
+								Color:       0xED4245,
+							},
+						},
+						Flags: discordgo.MessageFlagsEphemeral,
+					},
+				})
+				return
+			}
+
+			existing.AccessToken = encryptedToken
+			existing.Username = ghUsername
+
+			if err := b.DB.SaveGitHubSettings(ctx, existing); err != nil {
+				log.Printf("[Bot] Failed to update GitHub token for %s: %v", user.ID, err)
+				s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+					Type: discordgo.InteractionResponseChannelMessageWithSource,
+					Data: &discordgo.InteractionResponseData{
+						Embeds: []*discordgo.MessageEmbed{
+							{
+								Title:       "Failed to update token",
+								Description: "Could not save your new token to the database. Please try again. If the issue persists, contact a server admin.",
+								Color:       0xED4245,
+							},
+						},
+						Flags: discordgo.MessageFlagsEphemeral,
+					},
+				})
+				return
+			}
+
 			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 				Type: discordgo.InteractionResponseChannelMessageWithSource,
 				Data: &discordgo.InteractionResponseData{
 					Embeds: []*discordgo.MessageEmbed{
 						{
-							Title:       "Something went wrong",
-							Description: "An internal error occurred while securing your token. Please try again in a moment.",
-							Color:       0xED4245,
+							Title:       "Token Updated",
+							Description: fmt.Sprintf("Your GitHub token has been replaced. The account **%s** remains linked with your existing visibility setting intact.", ghUsername),
+							Color:       0x57F287,
+							Fields: []*discordgo.MessageEmbedField{
+								{
+									Name:  "Security",
+									Value: "Your new token is encrypted with AES-256-GCM before being stored. The old token has been overwritten and is no longer accessible.",
+								},
+							},
 						},
 					},
 					Flags: discordgo.MessageFlagsEphemeral,
 				},
 			})
-			return
 		}
-
-		showPrivate := visibility == "private" || visibility == "both"
-		showPublic := visibility == "public" || visibility == "both"
-
-		settings := &database.GitHubSettings{
-			UserID:      user.ID,
-			AccessToken: encryptedToken,
-			Username:    ghUsername,
-			ShowPrivate: showPrivate,
-			ShowPublic:  showPublic,
-		}
-
-		if err := b.DB.SaveGitHubSettings(ctx, settings); err != nil {
-			log.Printf("[Bot] Failed to save GitHub settings for %s: %v", user.ID, err)
-			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionResponseData{
-					Embeds: []*discordgo.MessageEmbed{
-						{
-							Title:       "Failed to save settings",
-							Description: "Could not save your GitHub settings to the database. Please try again. If the issue persists, contact a server admin.",
-							Color:       0xED4245,
-						},
-					},
-					Flags: discordgo.MessageFlagsEphemeral,
-				},
-			})
-			return
-		}
-
-		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseChannelMessageWithSource,
-			Data: &discordgo.InteractionResponseData{
-				Embeds: []*discordgo.MessageEmbed{
-					{
-						Title:       "GitHub Connected",
-						Description: fmt.Sprintf("Your GitHub account **%s** is now linked. Commit data will appear in your API presence within 5 minutes and will update every 5 minutes after that.", ghUsername),
-						Color:       0x238636,
-						Fields: []*discordgo.MessageEmbedField{
-							{
-								Name:  "Visibility Setting",
-								Value: fmt.Sprintf("Currently set to show **%s** repositories. You can change this at any time by running `/git` again with a different visibility option.", visibility),
-							},
-							{
-								Name:  "What appears in the API",
-								Value: "The `github` field in your presence will contain:\n`username` — your GitHub username\n`last_commit` — the message of your most recent commit\n`repo` — the repository it was pushed to\n`url` — a direct link to the commit\n`private` — whether the repo is private\n`updated_at` — Unix timestamp of the commit",
-							},
-							{
-								Name:  "Security",
-								Value: "Your token is encrypted with AES-256-GCM before being stored. It is never logged, cached in plaintext, or returned by the API. Run `/gitstop` at any time to revoke access and purge your data.",
-							},
-						},
-					},
-				},
-				Flags: discordgo.MessageFlagsEphemeral,
-			},
-		})
 
 	case "gitstop":
 		b.DB.DeleteGitHubSettings(ctx, user.ID)
@@ -751,7 +888,7 @@ func (b *Bot) onInteractionCreate(s *discordgo.Session, i *discordgo.Interaction
 				},
 				{
 					Name:  "Available Commands",
-					Value: "`/start` — Begin tracking your presence\n`/stop` — Delete your presence data\n`/ws` — Full WebSocket code example for your user ID\n`/git` — Link your GitHub account\n`/gitstop` — Unlink GitHub and remove your token\n`/sync` — Staff only: refresh all tracked users\n`/help` — This guide",
+					Value: "`/start` — Begin tracking your presence\n`/stop` — Delete your presence data\n`/ws` — Full WebSocket code example for your user ID\n`/git connect` — Link your GitHub account\n`/git update` — Replace your stored GitHub token\n`/gitstop` — Unlink GitHub and remove your token\n`/sync` — Staff only: refresh all tracked users\n`/help` — This guide",
 				},
 				{
 					Name:  "Common Issues",
