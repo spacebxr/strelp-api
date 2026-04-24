@@ -65,11 +65,11 @@ func (p *Poller) pollAll(ctx context.Context) {
 			log.Printf("[GitHub] Failed to decrypt token for %s: %v", u.UserID, err)
 			continue
 		}
-		p.pollUser(ctx, u.UserID, u.Username, rawToken, u.ShowPrivate, u.ShowPublic)
+		p.pollUser(ctx, u.UserID, u.Username, rawToken)
 	}
 }
 
-func (p *Poller) pollUser(ctx context.Context, userID, ghUsername, token string, showPrivate, showPublic bool) {
+func (p *Poller) pollUser(ctx context.Context, userID, ghUsername, token string) {
 	url := fmt.Sprintf("https://api.github.com/users/%s/events", ghUsername)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
@@ -112,10 +112,7 @@ func (p *Poller) pollUser(ctx context.Context, userID, ghUsername, token string,
 		if event.Type != "PushEvent" {
 			continue
 		}
-		if event.Repo.Private && !showPrivate {
-			continue
-		}
-		if !event.Repo.Private && !showPublic {
+		if event.Repo.Private {
 			continue
 		}
 
@@ -124,7 +121,6 @@ func (p *Poller) pollUser(ctx context.Context, userID, ghUsername, token string,
 			Username:  ghUsername,
 			Repo:      event.Repo.Name,
 			URL:       fmt.Sprintf("https://github.com/%s", event.Repo.Name),
-			Private:   event.Repo.Private,
 			UpdatedAt: event.CreatedAt.Unix(),
 		}
 

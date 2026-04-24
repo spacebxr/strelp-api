@@ -245,7 +245,7 @@ func (b *Bot) RegisterCommands(guildID string) error {
 				{
 					Type:        discordgo.ApplicationCommandOptionSubCommand,
 					Name:        "connect",
-					Description: "Connect your GitHub account to show your latest commits in your presence",
+					Description: "Connect your GitHub account to show your latest public commits in your presence",
 					Options: []*discordgo.ApplicationCommandOption{
 						{
 							Type:        discordgo.ApplicationCommandOptionString,
@@ -253,23 +253,12 @@ func (b *Bot) RegisterCommands(guildID string) error {
 							Description: "Your GitHub Personal Access Token (keep this private)",
 							Required:    true,
 						},
-						{
-							Type:        discordgo.ApplicationCommandOptionString,
-							Name:        "visibility",
-							Description: "Which repos to show in your presence",
-							Required:    true,
-							Choices: []*discordgo.ApplicationCommandOptionChoice{
-								{Name: "Public repos only", Value: "public"},
-								{Name: "Private repos only", Value: "private"},
-								{Name: "Both public and private", Value: "both"},
-							},
-						},
 					},
 				},
 				{
 					Type:        discordgo.ApplicationCommandOptionSubCommand,
 					Name:        "update",
-					Description: "Replace your stored GitHub token without changing your visibility setting",
+					Description: "Replace your stored GitHub token",
 					Options: []*discordgo.ApplicationCommandOption{
 						{
 							Type:        discordgo.ApplicationCommandOptionString,
@@ -475,13 +464,10 @@ func (b *Bot) onInteractionCreate(s *discordgo.Session, i *discordgo.Interaction
 
 		switch subCmd.Name {
 		case "connect":
-			var rawToken, visibility string
+			var rawToken string
 			for _, o := range subCmd.Options {
-				switch o.Name {
-				case "token":
+				if o.Name == "token" {
 					rawToken = o.StringValue()
-				case "visibility":
-					visibility = o.StringValue()
 				}
 			}
 
@@ -528,15 +514,10 @@ func (b *Bot) onInteractionCreate(s *discordgo.Session, i *discordgo.Interaction
 				return
 			}
 
-			showPrivate := visibility == "private" || visibility == "both"
-			showPublic := visibility == "public" || visibility == "both"
-
 			settings := &database.GitHubSettings{
 				UserID:      user.ID,
 				AccessToken: encryptedToken,
 				Username:    ghUsername,
-				ShowPrivate: showPrivate,
-				ShowPublic:  showPublic,
 			}
 
 			if err := b.DB.SaveGitHubSettings(ctx, settings); err != nil {
@@ -563,16 +544,12 @@ func (b *Bot) onInteractionCreate(s *discordgo.Session, i *discordgo.Interaction
 					Embeds: []*discordgo.MessageEmbed{
 						{
 							Title:       "GitHub Connected",
-							Description: fmt.Sprintf("Your GitHub account **%s** is now linked. Commit data will appear in your API presence within 5 minutes and will update every 5 minutes after that.", ghUsername),
+							Description: fmt.Sprintf("Your GitHub account **%s** is now linked. Public commit data will appear in your API presence within 5 minutes and will update every 5 minutes after that.", ghUsername),
 							Color:       0x238636,
 							Fields: []*discordgo.MessageEmbedField{
 								{
-									Name:  "Visibility Setting",
-									Value: fmt.Sprintf("Currently set to show **%s** repositories. You can change this at any time by running `/git connect` again with a different visibility option.", visibility),
-								},
-								{
 									Name:  "What appears in the API",
-									Value: "The `github` field in your presence will contain:\n`username` — your GitHub username\n`last_commit` — the message of your most recent commit\n`repo` — the repository it was pushed to\n`url` — a direct link to the commit\n`private` — whether the repo is private\n`updated_at` — Unix timestamp of the commit",
+									Value: "The `github` field in your presence will contain:\n`username` — your GitHub username\n`last_commit` — the message of your most recent commit\n`repo` — the repository it was pushed to\n`url` — a direct link to the commit\n`updated_at` — Unix timestamp of the commit",
 								},
 								{
 									Name:  "Security",
@@ -681,7 +658,7 @@ func (b *Bot) onInteractionCreate(s *discordgo.Session, i *discordgo.Interaction
 					Embeds: []*discordgo.MessageEmbed{
 						{
 							Title:       "Token Updated",
-							Description: fmt.Sprintf("Your GitHub token has been replaced. The account **%s** remains linked with your existing visibility setting intact.", ghUsername),
+							Description: fmt.Sprintf("Your GitHub token has been replaced. The account **%s** remains linked.", ghUsername),
 							Color:       0x57F287,
 							Fields: []*discordgo.MessageEmbedField{
 								{
@@ -880,11 +857,11 @@ func (b *Bot) onInteractionCreate(s *discordgo.Session, i *discordgo.Interaction
 				},
 				{
 					Name:  "Response Fields Reference",
-					Value: "`discord_status` — online / idle / dnd / offline\n`user` — id, username, global_name, avatar URL\n`activities` — current games or apps with images and timestamps\n`spotify` — track, artist, album, album art, start/end timestamps\n`github` — last commit message, repo, URL, privacy flag, timestamp\n`badges` — id and icon_url for each Discord badge\n`devices` — desktop, mobile, web (booleans)\n`nameplate` — active Discord nameplate asset\n`clan_tag` — Discord clan tag if set\n`history` — last 5 ended activities with durations",
+					Value: "`discord_status` — online / idle / dnd / offline\n`user` — id, username, global_name, avatar URL\n`activities` — current games or apps with images and timestamps\n`spotify` — track, artist, album, album art, start/end timestamps\n`github` — last commit message, repo, URL, timestamp\n`badges` — id and icon_url for each Discord badge\n`devices` — desktop, mobile, web (booleans)\n`nameplate` — active Discord nameplate asset\n`clan_tag` — Discord clan tag if set\n`history` — last 5 ended activities with durations",
 				},
 				{
 					Name:  "GitHub Integration",
-					Value: "Run `/git token:<PAT> visibility:<choice>` to link your GitHub account. Your latest commit will appear in the `github` field, refreshed every 5 minutes.\n\n**Creating a PAT:** GitHub → Settings → Developer settings → Personal access tokens. For `Fine-Grained PATs` grant `Read-only` access to `Contents and Metadata`. For `Classic PATs` enable `repo` and `read:user` scopes.\n\nYour token is encrypted with AES-256-GCM before storage and is never returned by the API. Run `/gitstop` to unlink at any time.",
+					Value: "Run `/git connect token:<PAT>` to link your GitHub account. Your latest commit will appear in the `github` field, refreshed every 5 minutes.\n\n**Creating a PAT:** GitHub → Settings → Developer settings → Personal access tokens. For `Fine-Grained PATs` grant `Read-only` access to `Contents and Metadata`. For `Classic PATs` enable `repo` and `read:user` scopes.\n\nYour token is encrypted with AES-256-GCM before storage and is never returned by the API. Run `/gitstop` to unlink at any time.",
 				},
 				{
 					Name:  "Available Commands",

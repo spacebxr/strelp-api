@@ -87,29 +87,25 @@ type GitHubSettings struct {
 	UserID      string
 	AccessToken string
 	Username    string
-	ShowPrivate bool
-	ShowPublic  bool
 }
 
 func (db *Database) SaveGitHubSettings(ctx context.Context, s *GitHubSettings) error {
 	query := `
-		INSERT INTO github_settings (user_id, access_token, username, show_private, show_public, deleted)
-		VALUES ($1, $2, $3, $4, $5, false)
+		INSERT INTO github_settings (user_id, access_token, username, deleted)
+		VALUES ($1, $2, $3, false)
 		ON CONFLICT (user_id) DO UPDATE
 		SET access_token = EXCLUDED.access_token,
 		    username = EXCLUDED.username,
-		    show_private = EXCLUDED.show_private,
-		    show_public = EXCLUDED.show_public,
 		    deleted = false;
 	`
-	_, err := db.pool.Exec(ctx, query, s.UserID, s.AccessToken, s.Username, s.ShowPrivate, s.ShowPublic)
+	_, err := db.pool.Exec(ctx, query, s.UserID, s.AccessToken, s.Username)
 	return err
 }
 
 func (db *Database) GetGitHubSettings(ctx context.Context, userID string) (*GitHubSettings, error) {
-	query := `SELECT user_id, access_token, username, show_private, show_public FROM github_settings WHERE user_id = $1`
+	query := `SELECT user_id, access_token, username FROM github_settings WHERE user_id = $1`
 	s := &GitHubSettings{}
-	err := db.pool.QueryRow(ctx, query, userID).Scan(&s.UserID, &s.AccessToken, &s.Username, &s.ShowPrivate, &s.ShowPublic)
+	err := db.pool.QueryRow(ctx, query, userID).Scan(&s.UserID, &s.AccessToken, &s.Username)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, fmt.Errorf("github settings not found")
@@ -125,7 +121,7 @@ func (db *Database) DeleteGitHubSettings(ctx context.Context, userID string) err
 }
 
 func (db *Database) GetAllGitHubUsers(ctx context.Context) ([]*GitHubSettings, error) {
-	query := `SELECT user_id, access_token, username, show_private, show_public FROM github_settings WHERE deleted = false`
+	query := `SELECT user_id, access_token, username FROM github_settings WHERE deleted = false`
 	rows, err := db.pool.Query(ctx, query)
 	if err != nil {
 		return nil, err
@@ -135,7 +131,7 @@ func (db *Database) GetAllGitHubUsers(ctx context.Context) ([]*GitHubSettings, e
 	var results []*GitHubSettings
 	for rows.Next() {
 		s := &GitHubSettings{}
-		if err := rows.Scan(&s.UserID, &s.AccessToken, &s.Username, &s.ShowPrivate, &s.ShowPublic); err != nil {
+		if err := rows.Scan(&s.UserID, &s.AccessToken, &s.Username); err != nil {
 			continue
 		}
 		results = append(results, s)
