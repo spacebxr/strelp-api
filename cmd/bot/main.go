@@ -10,6 +10,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/spacebxr/strelp-api/internal/bot"
 	"github.com/spacebxr/strelp-api/internal/database"
+	"github.com/spacebxr/strelp-api/internal/discord"
 )
 
 func main() {
@@ -40,6 +41,12 @@ func main() {
 	}
 	defer db.Close()
 	log.Println("PostgreSQL connected successfully")
+
+	discordUserToken := os.Getenv("DISCORD_USER_TOKEN")
+	if discordUserToken == "" {
+		log.Fatal("DISCORD_USER_TOKEN is required for fetching user profile data")
+	}
+	discord.Init(discordUserToken)
 
 	guildID := os.Getenv("GUILD_ID")
 	if guildID == "" {

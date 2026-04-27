@@ -8,7 +8,7 @@ The API aims to consolidate your digital presence into one clean endpoint.
 
 It offers real-time streaming capability via WebSockets, so any applications or websites you build can listen to your presence live without needing to constantly poll the server.
 
-The core Discord integration securely connects your profile to pull down your current status, active devices (desktop, web, or mobile), rich presence activities, and live Spotify playback details. Additionally, we use the DSTN integration to display aesthetic profile details like your Discord badges, clan tags, and custom nameplates.
+The core integration securely queries Discord to pull your current status, active devices, activities, Spotify playback, and rich profile elements (badges, avatar decorations, profile effects, banners, clan tags, and nameplates).
 
 Importantly, tracking is heavily opt-in. The bot will only track and expose data for users who explicitly initialize tracking by running the start command.
 
@@ -23,7 +23,8 @@ To get started, link your GitHub repository to a new Railway project and deploy 
 You must add the following variables in your Railway deployment for both services to run correctly:
 
 - `DISCORD_TOKEN`: Your standard Discord Bot Token.
-- `DATABASE_URL`: Your PostgreSQL connection string. 
+- `DISCORD_USER_TOKEN`: A Discord User Token to fetch aesthetic profile details (badges, clan tags, etc.) directly from the Discord API.
+- `DATABASE_URL`: Your PostgreSQL connection string.
 - `ENCRYPTION_KEY`: A secret string (minimum 16 characters) used to securely encrypt your users' GitHub Personal Access Tokens in the database.
 - `GUILD_ID`: The Discord Server ID where the bot will operate. This is strictly required to lock the bot's functionality and tracking to a single specific server.
 - `SYNC_ROLES`: A comma-separated list of Discord Role IDs. Server staff with these roles can use administrative synchronization commands.

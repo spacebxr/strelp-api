@@ -1,8 +1,15 @@
 package models
 
 type Badge struct {
-	ID      string `json:"id"`
-	IconURL string `json:"icon_url"`
+	ID          string `json:"id"`
+	Description string `json:"description,omitempty"`
+	IconURL     string `json:"icon_url"`
+	Link        string `json:"link,omitempty"`
+}
+
+type Clan struct {
+	Tag      string `json:"tag"`
+	BadgeURL string `json:"badge_url,omitempty"`
 }
 
 type User struct {
@@ -11,6 +18,9 @@ type User struct {
 	GlobalName string `json:"global_name"`
 	Avatar     string `json:"avatar"`
 	Decoration string `json:"decoration,omitempty"`
+	Banner     string `json:"banner,omitempty"`
+	Bio        string `json:"bio,omitempty"`
+	Pronouns   string `json:"pronouns,omitempty"`
 }
 
 type Spotify struct {
@@ -57,9 +67,12 @@ type Presence struct {
 	Spotify       *Spotify   `json:"spotify,omitempty"`
 	GitHub        *GitHub    `json:"github,omitempty"`
 
-	Badges    []Badge `json:"badges,omitempty"`
-	Nameplate string  `json:"nameplate,omitempty"`
-	ClanTag   string  `json:"clan_tag,omitempty"`
+	Badges          []Badge `json:"badges,omitempty"`
+	Nameplate       string  `json:"nameplate,omitempty"`
+	NameplateLabel  string  `json:"nameplate_label,omitempty"`
+	Clan            *Clan   `json:"clan,omitempty"`
+	ProfileEffectID  string  `json:"profile_effect_id,omitempty"`
+	ProfileEffectURL string  `json:"profile_effect_url,omitempty"`
 
 	Devices struct {
 		Desktop bool `json:"desktop"`

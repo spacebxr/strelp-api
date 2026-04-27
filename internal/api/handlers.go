@@ -25,24 +25,34 @@ func (s *Server) handleGetPresence(w http.ResponseWriter, r *http.Request) {
 
 	profile, err := discord.FetchProfile(userID)
 	if err == nil && profile != nil {
-
 		var badges []models.Badge
-
-		if profile.Badges != nil {
-			for _, b := range profile.Badges {
-				iconKey := b.Icon
-				if iconKey == "" {
-					iconKey = b.ID
-				}
-				badges = append(badges, models.Badge{
-					ID:      b.ID,
-					IconURL: fmt.Sprintf("https://cdn.discordapp.com/badge-icons/%s.png", iconKey),
-				})
+		for _, b := range profile.Badges {
+			iconKey := b.Icon
+			if iconKey == "" {
+				iconKey = b.ID
 			}
+			badges = append(badges, models.Badge{
+				ID:          b.ID,
+				Description: b.Description,
+				IconURL:     fmt.Sprintf("https://cdn.discordapp.com/badge-icons/%s.png", iconKey),
+				Link:        b.Link,
+			})
 		}
 		presence.Badges = badges
-		presence.Nameplate = profile.User.Collectibles.Nameplate.Asset
-		presence.ClanTag = profile.User.Clan.Tag
+		presence.Nameplate = profile.NameplateURL()
+		presence.NameplateLabel = profile.NameplateLabel()
+		presence.ProfileEffectID = profile.ProfileEffectID()
+		presence.ProfileEffectURL = profile.ProfileEffectURL()
+		presence.User.Decoration = profile.DecorationURL()
+		presence.User.Banner = profile.BannerURL()
+		presence.User.Bio = profile.UserProfile.Bio
+		presence.User.Pronouns = profile.UserProfile.Pronouns
+		if profile.User.Clan != nil && profile.User.Clan.Tag != "" {
+			presence.Clan = &models.Clan{
+				Tag:      profile.User.Clan.Tag,
+				BadgeURL: profile.ClanBadgeURL(),
+			}
+		}
 	}
 
 	applyPresenceMeta(presence)

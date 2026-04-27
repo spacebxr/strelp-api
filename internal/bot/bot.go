@@ -139,21 +139,34 @@ func (b *Bot) onPresenceUpdate(s *discordgo.Session, p *discordgo.PresenceUpdate
 	}
 
 	var badges []models.Badge
-	var nameplate string
-	var clanTag string
+	var nameplate, nameplateLabel, decoration, banner, bio, pronouns, profileEffectID, profileEffectURL string
+	var clan *models.Clan
 
-	dstnProf, _ := discord.FetchProfile(userObj.ID)
-	if dstnProf != nil {
-		nameplate = dstnProf.User.Collectibles.Nameplate.Asset
-		clanTag = dstnProf.User.Clan.Tag
-		for _, bg := range dstnProf.Badges {
+	if prof, err := discord.FetchProfile(userObj.ID); err == nil && prof != nil {
+		decoration = prof.DecorationURL()
+		banner = prof.BannerURL()
+		nameplate = prof.NameplateURL()
+		nameplateLabel = prof.NameplateLabel()
+		profileEffectID = prof.ProfileEffectID()
+		profileEffectURL = prof.ProfileEffectURL()
+		bio = prof.UserProfile.Bio
+		pronouns = prof.UserProfile.Pronouns
+		if prof.User.Clan != nil && prof.User.Clan.Tag != "" {
+			clan = &models.Clan{
+				Tag:      prof.User.Clan.Tag,
+				BadgeURL: prof.ClanBadgeURL(),
+			}
+		}
+		for _, bg := range prof.Badges {
 			iconKey := bg.Icon
 			if iconKey == "" {
 				iconKey = bg.ID
 			}
 			badges = append(badges, models.Badge{
-				ID:      bg.ID,
-				IconURL: fmt.Sprintf("https://cdn.discordapp.com/badge-icons/%s.png", iconKey),
+				ID:          bg.ID,
+				Description: bg.Description,
+				IconURL:     fmt.Sprintf("https://cdn.discordapp.com/badge-icons/%s.png", iconKey),
+				Link:        bg.Link,
 			})
 		}
 	}
@@ -194,15 +207,22 @@ func (b *Bot) onPresenceUpdate(s *discordgo.Session, p *discordgo.PresenceUpdate
 			Username:   userObj.Username,
 			GlobalName: userObj.GlobalName,
 			Avatar:     userObj.AvatarURL("1024"),
+			Decoration: decoration,
+			Banner:     banner,
+			Bio:        bio,
+			Pronouns:   pronouns,
 		},
-		DiscordStatus: string(p.Status),
-		Activities:    activities,
-		Spotify:       spotify,
-		Badges:        badges,
-		Nameplate:     nameplate,
-		ClanTag:       clanTag,
-		GitHub:        existing.GitHub,
-		History:       history,
+		DiscordStatus:   string(p.Status),
+		Activities:      activities,
+		Spotify:         spotify,
+		Badges:          badges,
+		Nameplate:       nameplate,
+		NameplateLabel:  nameplateLabel,
+		Clan:            clan,
+		ProfileEffectID:  profileEffectID,
+		ProfileEffectURL: profileEffectURL,
+		GitHub:          existing.GitHub,
+		History:         history,
 	}
 
 	presence.Devices.Desktop = p.ClientStatus.Desktop != ""
@@ -311,21 +331,34 @@ func (b *Bot) onInteractionCreate(s *discordgo.Session, i *discordgo.Interaction
 	switch data.Name {
 	case "start":
 		var badges []models.Badge
-		var nameplate string
-		var clanTag string
+		var nameplate, nameplateLabel, decoration, banner, bio, pronouns, profileEffectID, profileEffectURL string
+		var clan *models.Clan
 
-		dstnProf, _ := discord.FetchProfile(user.ID)
-		if dstnProf != nil {
-			nameplate = dstnProf.User.Collectibles.Nameplate.Asset
-			clanTag = dstnProf.User.Clan.Tag
-			for _, bg := range dstnProf.Badges {
+		if prof, err := discord.FetchProfile(user.ID); err == nil && prof != nil {
+			decoration = prof.DecorationURL()
+			banner = prof.BannerURL()
+			nameplate = prof.NameplateURL()
+			nameplateLabel = prof.NameplateLabel()
+			profileEffectID = prof.ProfileEffectID()
+			profileEffectURL = prof.ProfileEffectURL()
+			bio = prof.UserProfile.Bio
+			pronouns = prof.UserProfile.Pronouns
+			if prof.User.Clan != nil && prof.User.Clan.Tag != "" {
+				clan = &models.Clan{
+					Tag:      prof.User.Clan.Tag,
+					BadgeURL: prof.ClanBadgeURL(),
+				}
+			}
+			for _, bg := range prof.Badges {
 				iconKey := bg.Icon
 				if iconKey == "" {
 					iconKey = bg.ID
 				}
 				badges = append(badges, models.Badge{
-					ID:      bg.ID,
-					IconURL: fmt.Sprintf("https://cdn.discordapp.com/badge-icons/%s.png", iconKey),
+					ID:          bg.ID,
+					Description: bg.Description,
+					IconURL:     fmt.Sprintf("https://cdn.discordapp.com/badge-icons/%s.png", iconKey),
+					Link:        bg.Link,
 				})
 			}
 		}
@@ -335,13 +368,20 @@ func (b *Bot) onInteractionCreate(s *discordgo.Session, i *discordgo.Interaction
 				ID:         user.ID,
 				Username:   user.Username,
 				GlobalName: user.GlobalName,
-				Avatar:     user.Avatar,
+				Avatar:     user.AvatarURL("1024"),
+				Decoration: decoration,
+				Banner:     banner,
+				Bio:        bio,
+				Pronouns:   pronouns,
 			},
-			DiscordStatus: "online",
-			Activities:    []models.Activity{},
-			Badges:        badges,
-			Nameplate:     nameplate,
-			ClanTag:       clanTag,
+			DiscordStatus:   "online",
+			Activities:      []models.Activity{},
+			Badges:          badges,
+			Nameplate:       nameplate,
+			NameplateLabel:  nameplateLabel,
+			Clan:            clan,
+			ProfileEffectID:  profileEffectID,
+			ProfileEffectURL: profileEffectURL,
 		}
 
 		if p, err := s.State.Presence(i.GuildID, user.ID); err == nil && p != nil {
@@ -756,21 +796,34 @@ func (b *Bot) onInteractionCreate(s *discordgo.Session, i *discordgo.Interaction
 				}
 
 				var badges []models.Badge
-				var nameplate string
-				var clanTag string
+				var nameplate, nameplateLabel, decoration, banner, bio, pronouns, profileEffectID, profileEffectURL string
+				var clan *models.Clan
 
-				dstnProf, _ := discord.FetchProfile(userID)
-				if dstnProf != nil {
-					nameplate = dstnProf.User.Collectibles.Nameplate.Asset
-					clanTag = dstnProf.User.Clan.Tag
-					for _, bg := range dstnProf.Badges {
+				if prof, err := discord.FetchProfile(userID); err == nil && prof != nil {
+					decoration = prof.DecorationURL()
+					banner = prof.BannerURL()
+					nameplate = prof.NameplateURL()
+					nameplateLabel = prof.NameplateLabel()
+					profileEffectID = prof.ProfileEffectID()
+					profileEffectURL = prof.ProfileEffectURL()
+					bio = prof.UserProfile.Bio
+					pronouns = prof.UserProfile.Pronouns
+					if prof.User.Clan != nil && prof.User.Clan.Tag != "" {
+						clan = &models.Clan{
+							Tag:      prof.User.Clan.Tag,
+							BadgeURL: prof.ClanBadgeURL(),
+						}
+					}
+					for _, bg := range prof.Badges {
 						iconKey := bg.Icon
 						if iconKey == "" {
 							iconKey = bg.ID
 						}
 						badges = append(badges, models.Badge{
-							ID:      bg.ID,
-							IconURL: fmt.Sprintf("https://cdn.discordapp.com/badge-icons/%s.png", iconKey),
+							ID:          bg.ID,
+							Description: bg.Description,
+							IconURL:     fmt.Sprintf("https://cdn.discordapp.com/badge-icons/%s.png", iconKey),
+							Link:        bg.Link,
 						})
 					}
 				}
@@ -789,11 +842,18 @@ func (b *Bot) onInteractionCreate(s *discordgo.Session, i *discordgo.Interaction
 					presence.User.Username = userObj.Username
 					presence.User.GlobalName = userObj.GlobalName
 					presence.User.Avatar = userObj.AvatarURL("1024")
+					presence.User.Decoration = decoration
+					presence.User.Banner = banner
+					presence.User.Bio = bio
+					presence.User.Pronouns = pronouns
 				}
 
 				presence.Badges = badges
 				presence.Nameplate = nameplate
-				presence.ClanTag = clanTag
+				presence.NameplateLabel = nameplateLabel
+				presence.Clan = clan
+				presence.ProfileEffectID = profileEffectID
+				presence.ProfileEffectURL = profileEffectURL
 
 				if p, err := s.State.Presence(i.GuildID, userID); err == nil && p != nil {
 					presence.DiscordStatus = string(p.Status)
@@ -857,7 +917,7 @@ func (b *Bot) onInteractionCreate(s *discordgo.Session, i *discordgo.Interaction
 				},
 				{
 					Name:  "Response Fields Reference",
-					Value: "`discord_status` — online / idle / dnd / offline\n`user` — id, username, global_name, avatar URL\n`activities` — current games or apps with images and timestamps\n`spotify` — track, artist, album, album art, start/end timestamps\n`github` — last commit message, repo, URL, timestamp\n`badges` — id and icon_url for each Discord badge\n`devices` — desktop, mobile, web (booleans)\n`nameplate` — active Discord nameplate asset\n`clan_tag` — Discord clan tag if set\n`history` — last 5 ended activities with durations",
+					Value: "`discord_status` — online / idle / dnd / offline\n`user` — id, username, global_name, avatar, decoration, banner, bio, pronouns\n`activities` — current games or apps with images and timestamps\n`spotify` — track, artist, album, album_art, start/end timestamps\n`github` — last commit message, repo, URL, timestamp\n`badges` — id, description, link, icon_url for each badge\n`devices` — desktop, mobile, web (booleans)\n`nameplate` — nameplate asset URL\n`nameplate_label` — nameplate display name\n`clan` — tag and badge_url\n`profile_effect_id` & `profile_effect_url` — equipped profile effect\n`history` — last 5 ended activities with durations",
 				},
 				{
 					Name:  "GitHub Integration",
