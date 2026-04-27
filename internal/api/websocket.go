@@ -1,35 +1,14 @@
 package api
 
 import (
-	"encoding/json"
 	"log"
 	"net/http"
-	"net/url"
 	"time"
-
-	"fmt"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/gorilla/websocket"
 	"github.com/spacebxr/strelp-api/internal/models"
 )
-
-func fetchLyrics(song, artist string) string {
-	u := fmt.Sprintf("https://api.lyrics.ovh/v1/%s/%s", url.PathEscape(artist), url.PathEscape(song))
-
-	resp, err := http.Get(u)
-	if err != nil {
-		return ""
-	}
-	defer resp.Body.Close()
-
-	var data struct {
-		Lyrics string `json:"lyrics"`
-	}
-
-	json.NewDecoder(resp.Body).Decode(&data)
-	return data.Lyrics
-}
 
 func applyPresenceMeta(presence *models.Presence) {
 	if len(presence.Activities) > 5 {
@@ -76,18 +55,6 @@ func (s *Server) handleStreamPresence(w http.ResponseWriter, r *http.Request) {
 			log.Printf("[API] Error sending initial state: %v", err)
 			return
 		}
-		for _, activity := range presence.Activities {
-			if activity.Name == "Spotify" {
-				lyrics := fetchLyrics(activity.Details, activity.State)
-
-				conn.WriteJSON(map[string]interface{}{
-					"type":   "lyrics",
-					"song":   activity.Details,
-					"artist": activity.State,
-					"lyrics": lyrics,
-				})
-			}
-		}
 	}
 
 	dbConn, err := s.DB.AcquireConn(r.Context())
@@ -117,19 +84,6 @@ func (s *Server) handleStreamPresence(w http.ResponseWriter, r *http.Request) {
 				if err := conn.WriteJSON(presence); err != nil {
 					log.Printf("[API] Error streaming update: %v", err)
 					return
-				}
-
-				for _, activity := range presence.Activities {
-					if activity.Name == "Spotify" {
-						lyrics := fetchLyrics(activity.Details, activity.State)
-
-						conn.WriteJSON(map[string]interface{}{
-							"type":   "lyrics",
-							"song":   activity.Details,
-							"artist": activity.State,
-							"lyrics": lyrics,
-						})
-					}
 				}
 			}
 		}

@@ -57,6 +57,8 @@ func (s *Server) setupRoutes() {
 		r.Route("/presence", func(r chi.Router) {
 			r.Get("/{userID}", s.handleGetPresence)
 			r.Get("/{userID}/ws", s.handleStreamPresence)
+			r.Get("/{userID}/lyrics", s.handleGetLyrics)
+			r.Get("/{userID}/lyrics/ws", s.handleStreamLyrics)
 		})
 	})
 }
